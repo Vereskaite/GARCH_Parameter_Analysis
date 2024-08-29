@@ -72,13 +72,57 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
   
   # Parameter estimation using optim. adds what to output if there is an error ir nekonverguoja.
   # daugiau pasidometi del nekonvergavimo, galbut kazka pakeitus konverguotu, reiktu pagerinti
+  
+  # old 
+  
+  # fit <- tryCatch({
+  #   optim(start_params, log_likelihood,
+  #         r=r,P_t=P_t,N_t=N_t,a = a,b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,
+  #         method = "BFGS", hessian = TRUE, control = list(maxit = 10000, reltol = 1e-8))
+  # }, error = function(e) {
+  #   return(list(par = start_params, value = "Do not converge", hessian = matrix(NA, 4, 4)))
+  # })
+  
   fit <- tryCatch({
+    # First attempt using "BFGS"
     optim(start_params, log_likelihood,
-          r=r,P_t=P_t,N_t=N_t,a = a,b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,
-          method = "BFGS", hessian = TRUE)
+          r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,
+          method = "BFGS", hessian = TRUE, control = list(maxit = 10000, reltol = 1e-8))
   }, error = function(e) {
-    return(list(par = start_params, value = "Do not converge", hessian = matrix(NA, 4, 4)))
+    # If "BFGS" does not converge, try "Nelder-Mead"
+    tryCatch({
+      optim(start_params, log_likelihood,
+            r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,
+            method = "Nelder-Mead", hessian = TRUE, control = list(maxit = 10000, reltol = 1e-8))
+    }, error = function(e) {
+      # If "Nelder-Mead" does not converge, try "L-BFGS-B"
+      tryCatch({
+        optim(start_params, log_likelihood,
+              r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,
+              method = "L-BFGS-B", hessian = TRUE, control = list(maxit = 10000, reltol = 1e-8))
+      }, error = function(e) {
+        # If "L-BFGS-B" does not converge, try "CG"
+        tryCatch({
+          optim(start_params, log_likelihood,
+                r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,
+                method = "CG", hessian = TRUE, control = list(maxit = 10000, reltol = 1e-8))
+        }, error = function(e) {
+          # If "CG" does not converge, try "SANN"
+          tryCatch({
+            optim(start_params, log_likelihood,
+                  r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,
+                  method = "SANN", hessian = TRUE, control = list(maxit = 10000, reltol = 1e-8))
+          }, error = function(e) {
+            # If all methods fail, return the initial parameters with a "Do not converge" message
+            return(list(par = start_params, value = "Do not converge", hessian = matrix(NA, 4, 4)))
+          })
+        })
+      })
+    })
   })
+  
+  
+  ### Optim methods: "Nelder-Mead", "BFGS"
   
   # Getting parameters
   est_params <- fit$par
