@@ -102,8 +102,6 @@ Return_values
 
 ### Create table for Scenario 1
 
-class(Parameter_values$Value)
-
 Parameter_values <- data.frame(Scenario = paste("SimulatedNAGARCH",
                             parameter_grid[1,1],parameter_grid[1,2],parameter_grid[1,3],parameter_grid[1,4],
                             sep = "_"),
