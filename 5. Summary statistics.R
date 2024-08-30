@@ -35,14 +35,16 @@ No_beta <- Parameter_values %>%
   is.na() %>% 
   sum()
 
-Par_out_of_range <- Parameter_values %>% 
-  group_by(Scenario) %>%   group_by(Parameter) %>% 
-  summarise(a = min(a),
-            b = min(b),
-            kappa = min(kappa),
-            gamma = min(gamma),
-            alpha = min(alpha),
-            beta = min(beta))
-  
+NA_output <- Parameter_values %>% 
+  dplyr::filter(Parameter == c("AIC", "BIC", "RMSE", "MAE")) %>% 
+  is.na() %>% 
+  sum()
 
-names(Parameter_values)
+### Check stability condition 
+
+Par_out_of_range <- Parameter_values %>%
+  tidyr::pivot_wider(names_from = Parameter, values_from = Value) %>%
+  mutate(
+    condition_check = (a + b) * (alpha + beta) < 1
+  ) %>%
+  filter(condition_check == "FALSE")
