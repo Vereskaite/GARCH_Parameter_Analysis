@@ -1,6 +1,8 @@
+# Data pool ########
 Return_values
 Parameter_values
 
+# Problematic scenarios ##########
 Parameter_values %>% 
   mutate(ARCH_Test = ifelse(Parameter == "ARCH_Test" & Value > 0.05, "No_ARCH", "ARCH"))
 
@@ -40,7 +42,7 @@ NA_output <- Parameter_values %>%
   is.na() %>% 
   sum()
 
-### Check stability condition 
+# Check stability condition 
 
 Par_out_of_range <- Parameter_values %>%
   tidyr::pivot_wider(names_from = Parameter, values_from = Value) %>%
@@ -48,3 +50,8 @@ Par_out_of_range <- Parameter_values %>%
     condition_check = (a + b) * (alpha + beta) < 1
   ) %>%
   filter(condition_check == "FALSE")
+
+
+# Descriptive statistics ########
+summary(Parameter_values %>%
+          tidyr::pivot_wider(names_from = Parameter, values_from = Value) )
