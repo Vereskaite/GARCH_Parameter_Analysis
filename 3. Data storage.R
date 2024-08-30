@@ -109,12 +109,12 @@ Parameter_values <- data.frame(Scenario = paste("SimulatedNAGARCH",
                          "mu", "omega", "alpha", "beta", 
                          "mu_p", "omega_p", "alpha_p", "beta_p",
                          "mu_sign", "omega_sign", "alpha_sign", "beta_sign",
-                         "AIC", "BIC", "RMSE", "MAE"),
+                         "AIC", "BIC", "RMSE", "MAE", "ARCH_Test"),
            Value = c(parameter_grid[1,1],parameter_grid[1,2],parameter_grid[1,3],parameter_grid[1,4],
                       NA_GARCH_output[[1]]$Parameters[1], NA_GARCH_output[[1]]$Parameters[2], NA_GARCH_output[[1]]$Parameters[3], NA_GARCH_output[[1]]$Parameters[4],
                       NA_GARCH_output[[1]]$PValues[1], NA_GARCH_output[[1]]$PValues[2], NA_GARCH_output[[1]]$PValues[3], NA_GARCH_output[[1]]$PValues[4],
                       NA_GARCH_output[[1]]$PValues[1] < 0.05, NA_GARCH_output[[1]]$PValues[2] < 0.05, NA_GARCH_output[[1]]$PValues[3] < 0.05, NA_GARCH_output[[1]]$PValues[4] < 0.05,
-                      NA_GARCH_output[[1]]$AIC, NA_GARCH_output[[1]]$BIC, NA_GARCH_output[[1]]$RMSE, NA_GARCH_output[[1]]$MAE) )
+                      NA_GARCH_output[[1]]$AIC, NA_GARCH_output[[1]]$BIC, NA_GARCH_output[[1]]$RMSE, NA_GARCH_output[[1]]$MAE, NA_GARCH_output[[1]]$Arch_Test) )
 
 ### Create loop for further scenarios
 
@@ -132,7 +132,7 @@ for (i in 2:nrow(parameter_grid)){
                                                         NA_GARCH_output[[i]]$Parameters[1], NA_GARCH_output[[i]]$Parameters[2], NA_GARCH_output[[i]]$Parameters[3], NA_GARCH_output[[i]]$Parameters[4],
                                                         NA_GARCH_output[[i]]$PValues[1], NA_GARCH_output[[i]]$PValues[2], NA_GARCH_output[[i]]$PValues[3], NA_GARCH_output[[i]]$PValues[4],
                                                         NA_GARCH_output[[i]]$PValues[1] < 0.05, NA_GARCH_output[[i]]$PValues[2] < 0.05, NA_GARCH_output[[i]]$PValues[3] < 0.05, NA_GARCH_output[[i]]$PValues[4] < 0.05,
-                                                        NA_GARCH_output[[i]]$AIC, NA_GARCH_output[[i]]$BIC, NA_GARCH_output[[i]]$RMSE, NA_GARCH_output[[i]]$MAE) )
+                                                        NA_GARCH_output[[i]]$AIC, NA_GARCH_output[[i]]$BIC, NA_GARCH_output[[i]]$RMSE, NA_GARCH_output[[i]]$MAE, NA_GARCH_output[[i]]$Arch_Test) )
     )
   }
 
