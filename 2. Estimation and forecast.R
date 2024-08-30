@@ -247,5 +247,3 @@ for (i in 1:nrow(parameter_grid)) {
 
 NA_GARCH_output
 # Further loop to run it for multiple data sets ...
-
-NA_GARCH_output[[1]]$ARCH_Test

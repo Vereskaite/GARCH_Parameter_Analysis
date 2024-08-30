@@ -24,10 +24,10 @@ epsilon <- numeric(n)
 sigma2 <- numeric(n)
 f <- numeric(n)
 z <- rnorm(n)
-mu <- 0.1
+mu <- 0
 omega <- 0.1
-alpha <- 0.2
-beta <- 0.2
+alpha <- 0.1
+beta <- 0.1
 a <- 0.5
 b <- 1.5
 kappa <- 4
@@ -55,4 +55,6 @@ plot(r, type = "l")
 plot(P_t, type = "l")
 plot(N_t, type = "l")
 plot(f, type = "l")
+
+Box.test(r, lag = 20, type = "Ljung-Box")
 
