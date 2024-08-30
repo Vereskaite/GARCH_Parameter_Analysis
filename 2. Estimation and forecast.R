@@ -67,6 +67,7 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
     -logL  # Return negative log-likelihood
   }
   
+  
   # Initial parameter values (Check which ones it is the best to use)!!!
   start_params <- params
   
@@ -135,6 +136,9 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
   BIC <- if(is.numeric(logL)) {k * log(n) - 2 * logL} else {NA}
   n_out <- length(r_out)
   
+  # Residuals
+  # Residuals <- (r_in - est_params[1])/sigma2
+  
   # Pradeda forecastinti. imama out-of sample dalis
   # Initialize values for forecasting
   sigma2 <- numeric(n_out)
@@ -169,6 +173,8 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
     forecasted_returns[t] <- est_params[1] + z[t] * sqrt(sigma2[t])
   }
   
+  ARCH <- FinTS::ArchTest(r)
+  ARCH_Test <- ARCH$p.value
   RMSE <- sqrt(mean((r_out - forecasted_returns)^2, na.rm = TRUE))
   MAE <- mean(abs(r_out - forecasted_returns), na.rm = TRUE)
   
@@ -182,11 +188,13 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
     BIC = BIC,
     RMSE = RMSE,
     MAE = MAE,
+    ARCH_Test = ARCH_Test,
     ActualReturnsInSample = r_in,
     ActualReturnsOutSample = r_out,
     ForecastedReturns = forecasted_returns,
     Sigma2 = sigma2,
     f = f
+    # , Residuals = Residuals
     # f = f,
     # sigma2 = sigma2,
     # z=z
@@ -240,3 +248,4 @@ for (i in 1:nrow(parameter_grid)) {
 NA_GARCH_output
 # Further loop to run it for multiple data sets ...
 
+NA_GARCH_output[[1]]$ARCH_Test
