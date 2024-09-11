@@ -1,6 +1,7 @@
 # Data pool ########
 Return_values
 Parameter_values
+Parameter_values_df
 
 # Problematic scenarios ##########
 Parameter_values %>% 
@@ -10,11 +11,6 @@ Parameter_values %>%
 Parameter_values %>% 
   group_by(Scenario) %>% 
   summarise(Convergence = min(Value))
-
-
-Parameter_values %>% 
-  group_by(Parameter) %>% 
-  summarise()
 
 
 Not_converged <- Parameter_values %>% 
@@ -42,6 +38,11 @@ NA_output <- Parameter_values %>%
   is.na() %>% 
   sum()
 
+Not_converged
+No_ARCH
+No_beta
+NA_output
+
 # Check stability condition 
 
 Par_out_of_range <- Parameter_values %>%
@@ -54,4 +55,22 @@ Par_out_of_range <- Parameter_values %>%
 
 # Descriptive statistics ########
 summary(Parameter_values %>%
-          tidyr::pivot_wider(names_from = Parameter, values_from = Value) )
+          tidyr::pivot_wider(names_from = Parameter, values_from = Value))
+
+# Check distributions
+Parameter_values_Aux1 <- Parameter_values_df %>%
+  tidyr::pivot_longer(cols = c(AIC, BIC, RMSE, MAE), names_to = "Metric", values_to = "Value")
+
+ggplot(Parameter_values_Aux1 %>% filter(Metric == c("AIC","BIC")), aes(x = Value)) +
+  geom_histogram(aes(y = ..density..), binwidth = 5, fill = "blue", color = "black", alpha = 0.7) +  # Histogram
+  geom_density(color = "red", size = 1, alpha = 0.7) +  # Density plot
+  labs(title = "Histogram with Density Plot for AIC and BIC", x = "Value", y = "Density") +
+  facet_wrap(~ Metric, scales = "free") +  # Facet for each metric
+  theme_minimal()
+
+ggplot(Parameter_values_Aux1 %>% filter(Metric == c("RMSE","MAE")), aes(x = Value)) +
+  geom_histogram(aes(y = ..density..), binwidth = 0.01, fill = "blue", color = "black", alpha = 0.7) +  # Histogram
+  geom_density(color = "red", size = 1, alpha = 0.7) +  # Density plot
+  labs(title = "Histogram with Density Plot for RMSE and MAE", x = "Value", y = "Density") +
+  facet_wrap(~ Metric, scales = "free") +  # Facet for each metric
+  theme_minimal()
