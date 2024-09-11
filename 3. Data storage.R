@@ -137,3 +137,6 @@ for (i in 2:nrow(parameter_grid)){
   }
 
 Parameter_values
+
+Parameter_values_df <- Parameter_values %>%
+  tidyr::pivot_wider(names_from = Parameter, values_from = Value)
