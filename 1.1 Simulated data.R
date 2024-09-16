@@ -1,4 +1,5 @@
 set.seed(123)
+n <- 1000  # Number of time steps
 
 ####### Simulate r,P,N, kappa = 4, gamma = 6 ########## 
 # Parameters
@@ -11,7 +12,6 @@ b <- 0.8
 kappa <- 4
 gamma <- 6
 
-n <- 100000  # Number of time steps
 prob_zero_positive <- 0.8  # Probability of zero for positive sentiment
 prob_zero_negative <- 0.8  # Probability of zero for negative sentiment
 meanlog_positive <- 0.5  # Lognormal mean for positive sentiment
@@ -143,7 +143,7 @@ b <- 0.8
 kappa <- 6
 gamma <- 4
 
-n <- 100000  # Number of time steps
+
 prob_zero_positive <- 0.8  # Probability of zero for positive sentiment
 prob_zero_negative <- 0.8  # Probability of zero for negative sentiment
 meanlog_positive <- 0.5  # Lognormal mean for positive sentiment
@@ -276,7 +276,6 @@ b <- 0.8
 kappa <- 4
 gamma <- 4
 
-n <- 100000  # Number of time steps
 prob_zero_positive <- 0.8  # Probability of zero for positive sentiment
 prob_zero_negative <- 0.8  # Probability of zero for negative sentiment
 meanlog_positive <- 0.5  # Lognormal mean for positive sentiment
@@ -402,7 +401,7 @@ hist(simulated_data$f_t, breaks = 100, xlim = c(0.8,2))
 grid.arrange(f_t_heatmap_k4_g6, f_t_heatmap_k4_g4, f_t_heatmap_k6_g4)
 
 
-###### FINAL DATA
+###### FINAL DATA ######
 r <- simulated_data$Returns
 P_t <- simulated_data$Positive_Sentiment
 N_t <- simulated_data$Negative_Sentiment
@@ -414,3 +413,9 @@ objects_to_keep <- c("r", "P_t", "N_t","f_t")
 objects_to_remove <- setdiff(all_objects, objects_to_keep)
 rm(list = objects_to_remove)
 rm(all_objects,objects_to_remove)
+
+#### GARCH check
+plot(r, type = "l")
+ARCH <- FinTS::ArchTest(r)
+ARCH_Test <- ARCH$p.value
+# p-value < 0.05 therefore there exists ARCH effect and we move to GARCH analysis.
