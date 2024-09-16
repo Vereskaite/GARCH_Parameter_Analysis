@@ -151,6 +151,17 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
   alpha <- est_params[3]
   beta <- est_params[4]
   
+  # Check p-values and adjust parameters accordingly
+  if (p_values[3] > 0.05) {
+    alpha <- 0
+  }
+  if (p_values[4] > 0.05) {
+    beta <- 0
+  }
+  if (p_values[1] > 0.05) {
+    mu <- 0
+  }
+  
   # Calculate initial conditions for forecasting (this is still in-sample)
   f[1] <- a + 0.5 * b * ((exp(kappa * P_t_in[split_point]) - 1) / (exp(kappa * P_t_in[split_point]) + 1) - (exp(gamma * N_t_in[split_point]) - 1) / (exp(gamma * N_t_in[split_point]) + 1))
   sigma2[1] <- max(f[1] * (omega + alpha * (r_in[split_point] - est_params[1])^2 + beta * var(r_in)), 1e-6)
@@ -194,7 +205,7 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
     ForecastedReturns = forecasted_returns,
     Sigma2 = sigma2,
     f = f
-    # , Residuals = Residuals
+    # , Residuals = epsilon
     # f = f,
     # sigma2 = sigma2,
     # z=z
@@ -205,15 +216,15 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
 }
 
 # Run function 
-NA_GARCH_simulation_v1 <- NA_GARCH_Evaluation(r,P_t,N_t,a = 0.5,b = 1, kappa = 3, gamma = 3, params = c(0.1,0.1,0.1,0.1))
-
-NA_GARCH_simulation_v1$Parameters
-NA_GARCH_simulation_v1$f
-NA_GARCH_simulation_v1$Sigma2
-
-# Plot check
-plot(NA_GARCH_simulation_v1$ActualReturnsOutSample, type = "l")
-lines(NA_GARCH_simulation_v1$ForecastedReturns, col = "red", lwd = 2)
+  # NA_GARCH_simulation_v1 <- NA_GARCH_Evaluation(r,P_t,N_t,a = 0.5,b = 1, kappa = 3, gamma = 3, params = c(0.1,0.1,0.1,0.1))
+  # 
+  # NA_GARCH_simulation_v1$Parameters
+  # NA_GARCH_simulation_v1$f
+  # NA_GARCH_simulation_v1$Sigma2
+  # 
+  # # Plot check
+  # plot(NA_GARCH_simulation_v1$ActualReturnsOutSample, type = "l")
+  # lines(NA_GARCH_simulation_v1$ForecastedReturns, col = "red", lwd = 2)
 
 # Function to generate parameter grid
 generate_parameter_grid <- function(a_range, b_range, kappa_range, gamma_range,
@@ -226,15 +237,16 @@ generate_parameter_grid <- function(a_range, b_range, kappa_range, gamma_range,
   expand.grid(a = a_values, b = b_values, kappa = kappa_values, gamma = gamma_values)
 }
 
+
 # Define parameter ranges and generate the grid
 parameter_grid <- generate_parameter_grid(a_range = c(0.5, 2), 
-                                          a_step = 1,
+                                          a_step = 0.2,
                                           b_range = c(1, 2),
-                                          b_step = 1,
-                                          kappa_range = c(3, 4), 
-                                          kappa_step = 1,
-                                          gamma_range = c(3, 4), 
-                                          gamma_step = 1)
+                                          b_step = 0.2,
+                                          kappa_range = c(2, 5), 
+                                          kappa_step = 0.5,
+                                          gamma_range = c(2, 5), 
+                                          gamma_step = 0.5)
 
 # Create a loop to run all scenarios
 NA_GARCH_output <- list()
