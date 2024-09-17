@@ -2,8 +2,8 @@
 ##### Scatter plot - to observe general trend #######
 
 ### AIC and BIC
-Parameter_values_long <- Parameter_values_df %>%
-  tidyr::pivot_longer(cols = c(a, b, kappa, gamma), names_to = "parameter", values_to = "value") %>%
+Parameter_values_long <- Parameter_values_df_Aux %>%
+  tidyr::pivot_longer(cols = c(a, b, ab, kappa, gamma), names_to = "parameter", values_to = "value") %>%
   tidyr::pivot_longer(cols = c(AIC, BIC), names_to = "metric", values_to = "metric_value")
 
 Parameter_values_long$variable_pair <- paste(Parameter_values_long$parameter, "vs", Parameter_values_long$metric)
@@ -20,7 +20,7 @@ ggplot(Parameter_values_long, aes(x = value, y = metric_value, color = factor(va
   theme(legend.position = "none")
 
 ### RMSE and MAE
-Parameter_values_long <- Parameter_values_df %>%
+Parameter_values_long <- Parameter_values_df_Aux %>%
   tidyr::pivot_longer(cols = c(a, b, kappa, gamma), names_to = "parameter", values_to = "value") %>%
   tidyr::pivot_longer(cols = c(RMSE, MAE), names_to = "metric", values_to = "metric_value")
 
@@ -42,11 +42,16 @@ ggplot(Parameter_values_long, aes(x = value, y = metric_value, color = Scenario)
 summary(lm(MAE ~ a, data = Parameter_values_df))
 
 #### Sobol indices #######
+# Can be taken from Q1
+
+
+# Fit a linear regression model to the actual data
+model <- lm(AIC ~ a + b + kappa + gamma, data = Parameter_values_df_Aux)
 
 
 ############ All else equal graphs each case (AIC only) #####
 
-valid_combinations <- Parameter_values_df %>% 
+valid_combinations <- Parameter_values_df_Aux %>% 
   dplyr::select(b, kappa, gamma) %>% 
   group_by(b, kappa, gamma) %>% 
   unique()
@@ -168,3 +173,39 @@ gamma_AIC_b <- create_plot(Parameter_values_df_comb, "gamma", "AIC", "b", "Inter
 gamma_AIC_kappa <- create_plot(Parameter_values_df_comb, "gamma", "AIC", "kappa", "Interaction between Parameter a and gamma on AIC")
 
 grid.arrange(gamma_AIC_a, gamma_AIC_b, gamma_AIC_kappa, nrow = 3, top = "Interaction between Parameter a and Various Model Parameters on AIC")
+
+
+
+####### additional checks
+# Example input data
+# Histogram of each input variable
+par(mfrow = c(2, 2))  # 2x2 plot layout
+hist(Parameter_values_df_Aux$a, main = "Histogram of a", xlab = "a")
+hist(Parameter_values_df_Aux$b, main = "Histogram of b", xlab = "b")
+hist(Parameter_values_df_Aux$kappa, main = "Histogram of kappa", xlab = "kappa")
+hist(Parameter_values_df_Aux$gamma, main = "Histogram of gamma", xlab = "gamma")
+
+# Pairs plot to visualize relationships
+pairs(Parameter_values_df_Aux[c("a","b","kappa")], main = "Pairs Plot of Input Variables")
+
+
+# AIC summary
+par(mfrow = c(2, 3))  # 2x2 plot layout
+hist(Parameter_values_df_Aux$AIC, main = "Histogram of AIC", xlab = "AIC")
+boxplot(Parameter_values_df_Aux$AIC, main = "Boxplot of AIC", ylab = "AIC")
+Parameter_values_df_Aux$AIC <- Parameter_values_df_Aux$AIC
+plot(Parameter_values_df_Aux$a, Parameter_values_df_Aux$AIC, main = "AIC vs. a", xlab = "a", ylab = "AIC")
+plot(Parameter_values_df_Aux$b, Parameter_values_df_Aux$AIC, main = "AIC vs. b", xlab = "b", ylab = "AIC")
+plot(Parameter_values_df_Aux$kappa, Parameter_values_df_Aux$AIC, main = "AIC vs. kappa", xlab = "kappa", ylab = "AIC")
+plot(Parameter_values_df_Aux$gamma, Parameter_values_df_Aux$AIC, main = "AIC vs. gamma", xlab = "gamma", ylab = "AIC")
+
+
+# AIC summary
+par(mfrow = c(2, 3))  # 2x2 plot layout
+hist(Parameter_values_df_Aux$RMSE, main = "Histogram of RMSE", xlab = "RMSE")
+boxplot(Parameter_values_df_Aux$RMSE, main = "Boxplot of RMSE", ylab = "RMSE")
+Parameter_values_df_Aux$RMSE <- Parameter_values_df_Aux$RMSE
+plot(Parameter_values_df_Aux$a, Parameter_values_df_Aux$RMSE, main = "RMSE vs. a", xlab = "a", ylab = "RMSE")
+plot(Parameter_values_df_Aux$b, Parameter_values_df_Aux$RMSE, main = "RMSE vs. b", xlab = "b", ylab = "RMSE")
+plot(Parameter_values_df_Aux$kappa, Parameter_values_df_Aux$RMSE, main = "RMSE vs. kappa", xlab = "kappa", ylab = "AIC")
+plot(Parameter_values_df_Aux$gamma, Parameter_values_df_Aux$RMSE, main = "RMSE vs. gamma", xlab = "gamma", ylab = "AIC")
