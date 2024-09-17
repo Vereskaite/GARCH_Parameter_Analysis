@@ -1,9 +1,9 @@
 # Create data frames for output storage
 
 ###### DF1 - Return values ########
-
+start_time <- Sys.time()
+pb <- txtProgressBar(min = 0, max = nrow(parameter_grid), style = 3)
 ### Create table for Scenario 1
-
 # Add in-sample values
 Return_values <- data.frame(Scenario = paste("SimulatedNAGARCH",
                                              parameter_grid[1,1],parameter_grid[1,2],parameter_grid[1,3],parameter_grid[1,4],
@@ -94,12 +94,17 @@ for (i in 2:nrow(parameter_grid)){
                  Type = "f",
                  Returns = NA_GARCH_output[[i]]$f)
     ) 
+  setTxtProgressBar(pb, i)
 }
 
-Return_values
+close(pb)
+end_time <- Sys.time()
+total_runtime <- end_time - start_time
+print(paste("Total runtime:", total_runtime))
 
 ###### DF2 - Parameter values ########
-
+start_time <- Sys.time()
+pb <- txtProgressBar(min = 0, max = nrow(parameter_grid), style = 3)
 ### Create table for Scenario 1
 
 Parameter_values <- data.frame(Scenario = paste("SimulatedNAGARCH",
@@ -118,7 +123,7 @@ Parameter_values <- data.frame(Scenario = paste("SimulatedNAGARCH",
 
 ### Create loop for further scenarios
 
-for (i in 2:nrow(parameter_grid)){ 
+for (i in 2:length(NA_GARCH_output)){ 
   Parameter_values <- Parameter_values %>% 
     bind_rows(
       data.frame(Scenario = paste("SimulatedNAGARCH",parameter_grid[i,1],parameter_grid[i,2],parameter_grid[i,3],parameter_grid[i,4],
@@ -134,9 +139,18 @@ for (i in 2:nrow(parameter_grid)){
                                                         NA_GARCH_output[[i]]$PValues[1] < 0.05, NA_GARCH_output[[i]]$PValues[2] < 0.05, NA_GARCH_output[[i]]$PValues[3] < 0.05, NA_GARCH_output[[i]]$PValues[4] < 0.05,
                                                         NA_GARCH_output[[i]]$AIC, NA_GARCH_output[[i]]$BIC, NA_GARCH_output[[i]]$RMSE, NA_GARCH_output[[i]]$MAE, NA_GARCH_output[[i]]$ARCH_Test) )
     )
-  }
+  setTxtProgressBar(pb, i)
+}
 
-Parameter_values
+close(pb)
+end_time <- Sys.time()
+total_runtime <- end_time - start_time
+print(paste("Total runtime:", total_runtime))
 
 Parameter_values_df <- Parameter_values %>%
   tidyr::pivot_wider(names_from = Parameter, values_from = Value)
+
+### Save cases
+Parameter_values_Aux <- Parameter_values
+Parameter_values_df_Aux <- Parameter_values_df
+Return_values_Aux <- Return_values
