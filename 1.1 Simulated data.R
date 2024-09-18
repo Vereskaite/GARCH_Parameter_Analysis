@@ -1,5 +1,5 @@
 set.seed(123)
-n <- 1000  # Number of time steps
+n <- 10000  # Number of time steps
 
 ####### Simulate r,P,N, kappa = 4, gamma = 6 ########## 
 # Parameters
@@ -398,7 +398,7 @@ hist(simulated_data$f_t, breaks = 100, xlim = c(0.8,2))
 
 
 ###### FINAL COMPARISON ########
-grid.arrange(f_t_heatmap_k4_g6, f_t_heatmap_k4_g4, f_t_heatmap_k6_g4)
+f_heatmaps <- grid.arrange(f_t_heatmap_k4_g6, f_t_heatmap_k4_g4, f_t_heatmap_k6_g4)
 
 
 ###### FINAL DATA ######
@@ -409,7 +409,7 @@ f_t <- simulated_data$f_t
 
 #### Clean-up
 all_objects <- ls()
-objects_to_keep <- c("r", "P_t", "N_t","f_t")
+objects_to_keep <- c("r", "P_t", "N_t","f_t","f_heatmaps")
 objects_to_remove <- setdiff(all_objects, objects_to_keep)
 rm(list = objects_to_remove)
 rm(all_objects,objects_to_remove)
@@ -417,5 +417,5 @@ rm(all_objects,objects_to_remove)
 #### GARCH check
 plot(r, type = "l")
 ARCH <- FinTS::ArchTest(r)
-ARCH_Test <- ARCH$p.value
+ARCH_Test <- print(ARCH$p.value)
 # p-value < 0.05 therefore there exists ARCH effect and we move to GARCH analysis.
