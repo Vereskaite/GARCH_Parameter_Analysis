@@ -1,5 +1,19 @@
+#### Scatter plot matrix
+
+selected_data <- Parameter_values_df_Aux[, c("a", "b", "kappa", "gamma", "alpha", "beta", "AIC", "BIC", "RMSE", "MAE")]
+
+ggpairs(
+  selected_data,
+  lower = list(continuous = wrap("points", alpha = 0.5)),  # Scatterplot in the lower triangle
+  diag = list(continuous = wrap("barDiag")),  # Histogram on the diagonal
+  upper = list(continuous = wrap("cor", size = 3)),  # Correlation plot in the upper triangle
+  axisLabels = "show",  # Show axis labels for clarity
+  columnLabels = colnames(selected_data)  # Use column names as labels
+) +
+  theme(strip.text = element_text(size = 12))  # Adjust text size for be
 
 ##### Scatter plot - to observe general trend #######
+
 
 ### AIC and BIC
 Parameter_values_long <- Parameter_values_df_Aux %>%
@@ -44,11 +58,6 @@ summary(lm(MAE ~ a, data = Parameter_values_df))
 #### Sobol indices #######
 # Can be taken from Q1
 
-
-# Fit a linear regression model to the actual data
-model <- lm(AIC ~ a + b + kappa + gamma, data = Parameter_values_df_Aux)
-
-
 ############ All else equal graphs each case (AIC only) #####
 
 valid_combinations <- Parameter_values_df_Aux %>% 
@@ -77,10 +86,11 @@ Parameter_values_df_comb <- Parameter_values_df %>%
   mutate(Combination_a = interaction(b, kappa, gamma, drop = TRUE),
          Combination_b = interaction(a, kappa, gamma, drop = TRUE),
          Combination_kappa = interaction(a, b, gamma, drop = TRUE),
-         Combination_gamma = interaction(a, b, kappa, drop = TRUE))
+         Combination_gamma = interaction(a, b, kappa, drop = TRUE),
+         Combination_ab = interaction(kappa, drop = TRUE))
 
 long_df <- Parameter_values_df_comb %>%
-  tidyr::pivot_longer(cols = c(a, b, kappa, gamma), names_to = "Parameter", values_to = "Value") %>%
+  tidyr::pivot_longer(cols = c(a, b, ab, kappa, gamma), names_to = "Parameter", values_to = "Value") %>%
   tidyr::pivot_longer(cols = starts_with("Combination"), names_to = "Combination_type", values_to = "Combination") %>%
   mutate(Combination = factor(Combination))  # Ensure Combination is a factor for smooths
 

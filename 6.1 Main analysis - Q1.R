@@ -15,7 +15,7 @@ library(sensitivity)
 #          gamma_norm = (gamma - min(Parameter_values_df_Aux$gamma))/(max(Parameter_values_df_Aux$gamma)-min(Parameter_values_df_Aux$gamma)))
 
 # aic_model <- lm(AIC ~ a_norm + b_norm + kappa_norm + gamma_norm, data = Parameter_values_df_Aux_norm)
-aic_model <- lm(AIC ~ a + b + kappa + gamma + ab, data = Parameter_values_df_Aux)
+aic_model <- lm(AIC ~ a + b + kappa + gamma , data = Parameter_values_df_Aux)
 bic_model <- lm(BIC ~ a + b + kappa + gamma + alpha + beta, data = Parameter_values_df_Aux)
 rmse_model <- lm(RMSE ~ a + b + kappa + gamma + alpha + beta, data = Parameter_values_df_Aux)
 mae_model <- lm(MAE ~ a + b + kappa + gamma + alpha + beta, data = Parameter_values_df_Aux)
