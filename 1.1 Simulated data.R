@@ -409,7 +409,7 @@ f_t <- simulated_data$f_t
 
 #### Clean-up
 all_objects <- ls()
-objects_to_keep <- c("r", "P_t", "N_t","f_t","f_heatmaps")
+objects_to_keep <- c("r", "P_t", "N_t","f_t","f_heatmaps","n")
 objects_to_remove <- setdiff(all_objects, objects_to_keep)
 rm(list = objects_to_remove)
 rm(all_objects,objects_to_remove)
