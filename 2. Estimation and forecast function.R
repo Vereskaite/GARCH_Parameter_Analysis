@@ -48,9 +48,9 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
     
     f[1] <- a + 0.5 * b * ((exp(kappa * P_t_in[1]) - 1) / (exp(kappa * P_t_in[1]) + 1) - (exp(gamma * N_t_in[1]) - 1) / (exp(gamma * N_t_in[1]) + 1))
     # Adding f corrections
-    if (P_t[1] == 0 && N_t[1] == 0) {
-      f_t[1] <- 1
-    }
+    # if (P_t[1] == 0 && N_t[1] == 0) {
+    #   f_t[1] <- 1
+    # }
     
     # paskaiciuoja initial variance ir uzdeda max, kad nebutu variance neigiamas
     sigma2[1] <- max((omega *(a+b) / (1 - (alpha + beta)*(a+b))), 1e-6)
@@ -61,9 +61,9 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
     for (t in 2:n) {
       f[t] <- a + 0.5 * b * ((exp(kappa * P_t_in[t]) - 1) / (exp(kappa * P_t_in[t]) + 1) - (exp(gamma * N_t_in[t]) - 1) / (exp(gamma * N_t_in[t]) + 1))
       # Adding f corrections
-      if (P_t[t] == 0 && N_t[t] == 0) {
-        f_t[t] <- 1
-      }
+      # if (P_t[t] == 0 && N_t[t] == 0) {
+      #   f_t[t] <- 1
+      # }
       #NA-GARCH
       sigma2[t] <- max(f[t-1] * (omega + alpha * epsilon[t-1]^2 + beta * sigma2[t-1]), 1e-6)
       epsilon[t] <- r_in[t] - mu
@@ -172,6 +172,12 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
   
   # Calculate initial conditions for forecasting (this is still in-sample)
   f[1] <- a + 0.5 * b * ((exp(kappa * P_t_in[split_point]) - 1) / (exp(kappa * P_t_in[split_point]) + 1) - (exp(gamma * N_t_in[split_point]) - 1) / (exp(gamma * N_t_in[split_point]) + 1))
+  # Adding f corrections
+  # if (P_t[1] == 0 && N_t[1] == 0) {
+  #   f_t[1] <- 1
+  # }
+  
+  
   sigma2[1] <- max(f[1] * (omega + alpha * (r_in[split_point] - est_params[1])^2 + beta * var(r_in)), 1e-6)
   epsilon[1] <- r_in[split_point]
   
@@ -186,6 +192,12 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
     } else {
       f[t + split_point] <- a + 0.5 * b * ((exp(kappa * P_t_out[t - 1]) - 1) / (exp(kappa * P_t_out[t - 1]) + 1) - (exp(gamma * N_t_out[t - 1]) - 1) / (exp(gamma * N_t_out[t - 1]) + 1))
     }
+    
+    # Adding f corrections
+    # if (P_t[t] == 0 && N_t[t] == 0) {
+    #   f_t[t] <- 1
+    # }
+    # 
     sigma2[t] <- max(f[t + split_point - 1] * (omega + alpha * epsilon[t]^2 + beta * sigma2[t]), 1e-6)
     epsilon[t] <- r_out[t] - est_params[1]
     z <- rnorm(1000, mean = 0, sd = 1)
@@ -247,13 +259,13 @@ generate_parameter_grid <- function(a_range, b_range, kappa_range, gamma_range,
 
 
 # Define parameter ranges and generate the grid
-parameter_grid <- generate_parameter_grid(a_range = c(0.2, 3), 
-                                          a_step = 0.5,
+parameter_grid <- generate_parameter_grid(a_range = c(0.2, 2), 
+                                          a_step = 1,
                                           b_range = c(0.5, 2),
                                           b_step = 1,
-                                          kappa_range = c(2, 4), 
+                                          kappa_range = c(2, 3), 
                                           kappa_step = 1,
-                                          gamma_range = c(2, 4), 
+                                          gamma_range = c(2, 3), 
                                           gamma_step = 1)
 
 # Create a loop to run all scenarios - WITHOUT STATUS BAR
@@ -267,6 +279,9 @@ for (i in 1:nrow(parameter_grid)) {
 
 NA_GARCH_output
 
-# parameter_grid <- parameter_grid[1:408,]
+# parameter_grid <- parameter_grid[1:15,]
+
+length(NA_GARCH_output)
 
 
+NA_GARCH_output_t
