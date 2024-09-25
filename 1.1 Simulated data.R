@@ -1,7 +1,8 @@
 set.seed(123)
 n <- 10000  # Number of time steps
 
-####### Simulate r,P,N, kappa = 4, gamma = 6 ########## 
+### SIMULATIONS WITH P_t N_t ZERO-INFLATED GAMMA DISTRIBUTION
+####### Simulate r; P,N - zero inflated gamma with kappa = 4, gamma = 6 ########## 
 # Parameters
 mu <- 0
 omega <- 0.1
@@ -132,7 +133,7 @@ simulated_data %>%
 hist(simulated_data$f_t, breaks = 100, xlim = c(0.8,2))
 
 
-####### Simulate r,P,N, kappa = 6, gamma = 4 ########## 
+####### Simulate r; P,N - zero inflated gamma with kappa = 6, gamma = 4 ########## 
 # Parameters
 mu <- 0
 omega <- 0.1
@@ -265,7 +266,7 @@ hist(simulated_data$f_t, breaks = 100, xlim = c(0.8,2))
 
 
 
-####### Simulate r,P,N, kappa = 4, gamma = 4 ########## 
+####### Simulate r; P,N - zero inflated gamma with kappa = 4, gamma = 4 ########## 
 # Parameters
 mu <- 0
 omega <- 0.1
@@ -397,6 +398,136 @@ simulated_data %>%
 hist(simulated_data$f_t, breaks = 100, xlim = c(0.8,2))
 
 
+
+
+### SIMULATIONS WITH P_t N_t HALF NORMAL DISTRIBUTION
+
+### SIMULATIONS WITH P_t N_t HALF NORMAL DISTRIBUTION
+##### Simulate r; P,N - half-normal, kappa = 4, gamma = 4 #######
+
+# Parameters
+n <- 10000  # Number of time steps
+mu <- 0
+omega <- 0.1
+alpha <- 0.1
+beta <- 0.1
+a <- 0.8
+b <- 0.8
+kappa <- 4
+gamma <- 4
+
+# Generate data for Half-Normal distribution
+sigma <- 0.5
+
+### Positive
+generate_half_normal <- function(n, sigma) {
+  data <- abs(rnorm(n, mean = 0, sd = sigma))
+  
+  min_val <- min(data)
+  max_val <- max(data)
+  standardized_data <- (data - min_val) / (max_val - min_val) * (1 - 0.01) + 0.01
+  
+  return(standardized_data)
+}
+
+standardized_data <- c()
+
+while(length(standardized_data) < n) {
+  additional_data <- generate_half_normal(n, sigma)  # Generate n samples each time
+  standardized_data <- c(standardized_data, additional_data)
+}
+
+P_t <- standardized_data[1:n]
+
+### Negative
+
+generate_half_normal_negative <- function(n, sigma) {
+  data <- -abs(rnorm(n, mean = 0, sd = sigma))  # Generate negative half-normal values
+  
+  min_val <- min(data)
+  max_val <- max(data)
+  standardized_data <- (data - min_val) / (max_val - min_val) * (-0.01 + 1) - 1
+  
+  return(standardized_data)
+}
+
+standardized_data <- c()
+
+while(length(standardized_data) < n) {
+  additional_data <- generate_half_normal_negative(n, sigma)  # Generate n samples each time
+  standardized_data <- c(standardized_data, additional_data)
+}
+
+N_t <- standardized_data[1:n]
+
+# Step 2: Simulate NA-GARCH(1,1) Process
+r_t <- numeric(n)
+sigma2_t <- numeric(n)
+f_t <- numeric(n)
+epsilon_t <- numeric(n)
+
+# Initial values
+sigma2_t[1] <- omega / (1 - alpha - beta)  # Set initial variance
+epsilon_t[1] <- rnorm(1, mean = 0, sd = sqrt(sigma2_t[1]))  # First shock
+r_t[1] <- mu + epsilon_t[1]  # First return
+
+# Loop through time to generate the process
+for (t in 2:n) {
+ 
+  # Calculate f_t based on P_t and N_t  
+  # if (P_t[[1]][t-1] == 0 && N_t[[1]][t-1] == 0) {
+  #   f_t[t-1] <- 1
+  # } else {
+    f_t[t-1] <- a + 0.5 * b * ((exp(kappa * P_t[t-1]) - 1) / (exp(kappa * P_t[t-1]) + 1) - 
+                                 (exp(gamma * N_t[t-1]) - 1) / (exp(gamma * N_t[t-1]) + 1))
+  # }
+  # Update sigma^2 using GARCH(1,1) model
+  sigma2_t[t] <- f_t[t-1] * (omega + alpha * epsilon_t[t-1]^2 + beta * sigma2_t[t-1])
+  
+  # Generate z_t from standard normal distribution
+  z_t <- rnorm(1)
+  
+  # Calculate the new epsilon_t
+  epsilon_t[t] <- z_t * sqrt(sigma2_t[t])
+  
+  # Update returns r_t
+  r_t[t] <- mu + epsilon_t[t]
+}
+
+r <- r_t
+
+# Step 3: Combine Results into a Data Frame
+simulated_data <- data.frame(
+  Time = 1:n,
+  Returns = r_t,
+  Volatility = sqrt(sigma2_t),
+  Positive_Sentiment = P_t,
+  Negative_Sentiment = N_t,
+  f_t = f_t
+) 
+# %>% 
+#   rename(Positive_Sentiment = P_t_Aux,
+#          Negative_Sentiment = N_t_Aux)
+
+
+ggplot(simulated_data, aes(x = as.integer(Positive_Sentiment*100), 
+                                                   y = as.integer(Negative_Sentiment*100), fill = f_t)) +
+  geom_tile() +
+  scale_fill_gradientn(
+    colors = c("blue", "green", "red"),
+    values = scales::rescale(c(0, 1, 2)),  # Blue for <1, white for =1, red for >1
+    breaks = seq(0.8, 1.6, by = 0.1),
+    limits = c(0.8, 1.6)
+  ) + 
+  labs(title = "Heatmap of Sentiment and f_t: kappa = gamma = 4",
+       x = "Positive Sentiment (P_t)",
+       y = "Negative Sentiment (N_t)",
+       fill = "f_t") +
+  scale_y_reverse()+
+  theme_minimal()
+
+
+
 ###### FINAL COMPARISON ########
 f_heatmaps <- grid.arrange(f_t_heatmap_k4_g6, f_t_heatmap_k4_g4, f_t_heatmap_k6_g4)
 
@@ -407,12 +538,20 @@ P_t <- simulated_data$Positive_Sentiment
 N_t <- simulated_data$Negative_Sentiment
 f_t <- simulated_data$f_t
 
+Simulated_TS <- data.frame("r" = r,
+           "P" = P_t,
+           "N" = N_t,
+           "f" = f_t)
+
+Simulated_TS %>% 
+  filter(P == 0 & N == 0)
+
 #### Clean-up
 all_objects <- ls()
-objects_to_keep <- c("r", "P_t", "N_t","f_t","f_heatmaps","n")
+objects_to_keep <- c("r", "P_t", "N_t","f_t","f_heatmaps","n", "simulated_data")
 objects_to_remove <- setdiff(all_objects, objects_to_keep)
 rm(list = objects_to_remove)
-rm(all_objects,objects_to_remove)
+rm(all_objects,objects_to_remove, objects_to_keep)
 
 #### GARCH check
 plot(r, type = "l")
