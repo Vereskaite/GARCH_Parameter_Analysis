@@ -1,0 +1,63 @@
+---
+title: "Analysis description"
+output: html_document
+date: "2024-09-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(patchwork)
+library(gridExtra)
+library(tidyquant)
+library(ggplot2)
+library(dplyr)
+options(scipen = 9999)
+library(ggplot2)
+library(factoextra) # for PCA visualization
+library(dplyr)
+library(sensitivity)
+library(GGally)
+library(corrplot)
+library(car)
+library(tidyr)
+library(gridExtra)
+library(plotly)
+library(reshape2)
+```
+
+## R Markdown
+## Understanding news augmentation function 
+
+```{r , echo = FALSE, include = FALSE}
+source("1.1. Simulated data.R")
+source("1.1.2 F analysis.R")
+```
+
+For the beginning a 3D plot is created to understand how the function works. Below it is seen that the higher P and N values, the higher f value, meaning that the existance of more important news will increase the volatility.
+
+Function gets it's highest value $a+b$ when there are both a very good and very bad news at the same day. The lowest value (a) is when the the news are very low impact.
+
+As a and b are changed, maximum (a+b) and minimum (a) of f values is changed. For example if a = 0.8 and b = 0.8, then if there are very low impact news then volatility will be reduced by 20%, while very high news (both good and bad) will increase volatility by 60%. 
+
+Kappa and gamma change can be observed by comparing three 3D plots, they change the shape of the surface. If $\kappa > \gamma$ then positive news impact increases faster and vice versa.
+
+```{r, echo = FALSE}
+plot_scenario_1
+plot_scenario_2
+plot_scenario_3
+```
+
+
+Difference between scenarios is better seen in the graph below. Blue line is base line scenario where kappa = gamma. If positive parameter is selected as higher (meaning - positive has more impact), ...   It is seen that 
+
+```{r, echo = FALSE}
+plot_scenarios_smoothed_PN
+```
+
+Differences between kappa and gamma selection can be visualised as below. Baseline is taken as $\kappa = \gamma$ and further difference is observed when either $\kappa$ or $\gamma$ are doubled.The effect is symmetrical for negative and positive impact and it is seen that the difference reaches it's peak at selected point and diminishes as values increase. This shows that the biggest influence from asymmetry of kappa and gamma comes in lower impact news. The influence comes from surface being concave.
+
+```{r, echo = FALSE}
+plot(f_diff_PN_lines)
+```
+
+
