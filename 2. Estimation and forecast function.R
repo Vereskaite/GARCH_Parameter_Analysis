@@ -39,9 +39,9 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
     
     # sukuria tuscius ir veliau uzpildo
     n <- length(r_in)
-    sigma2 <- numeric(n)
-    epsilon <- numeric(n)
-    f <- numeric(n)
+    sigma2 <- numeric(length(r))
+    epsilon <- numeric(length(r))
+    f <- numeric(length(r))
     
     # Suskaiciuoja pirmine value
     ## naujienu itakos forma, cia imama initial value
@@ -79,7 +79,7 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
   # Initial parameter values (Check which ones it is the best to use)!!!
   start_params <- params
   
-  # Parameter estimation using optim. adds what to output if there is an error ir nekonverguoja.
+  # Parameter estimation using optim. adds what to output if there is an error  ir nekonverguoja.
   # daugiau pasidometi del nekonvergavimo, galbut kazka pakeitus konverguotu, reiktu pagerinti
   
   # old 
@@ -144,14 +144,14 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
   BIC <- if(is.numeric(logL)) {k * log(n) - 2 * logL} else {NA}
   n_out <- length(r_out)
   
-  # Residuals
+    # Residuals
   # Residuals <- (r_in - est_params[1])/sigma2
   
   # Pradeda forecastinti. imama out-of sample dalis
   # Initialize values for forecasting
-  sigma2 <- numeric(n_out)
-  epsilon <- numeric(n_out)
-  f <- numeric(n_out)
+  # sigma2 <- numeric(n_out)
+  # epsilon <- numeric(n_out)
+  # f <- numeric(n_out)
   
   # Define parameters
   mu <- est_params[1]
@@ -170,44 +170,53 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
     mu <- 0
   }
   
-  # Calculate initial conditions for forecasting (this is still in-sample)
-  f[1] <- a + 0.5 * b * ((exp(kappa * P_t_in[split_point]) - 1) / (exp(kappa * P_t_in[split_point]) + 1) - (exp(gamma * N_t_in[split_point]) - 1) / (exp(gamma * N_t_in[split_point]) + 1))
+  # Calculate initial conditions for forecasting (this is still in-sample, gonna be taken for out-sample forecast)
+  # f[split_point+1] <- a + 0.5 * b * ((exp(kappa * P_t_out[1]) - 1) / (exp(kappa * P_t_out[1]) + 1) - (exp(gamma * N_t_out[1]) - 1) / (exp(gamma * N_t_out[1]) + 1))
   # Adding f corrections
   # if (P_t[1] == 0 && N_t[1] == 0) {
   #   f_t[1] <- 1
   # }
   
   
-  sigma2[1] <- max(f[1] * (omega + alpha * (r_in[split_point] - est_params[1])^2 + beta * var(r_in)), 1e-6)
-  epsilon[1] <- r_in[split_point]
+  # sigma2[1] <- max(f[1] * (omega + alpha * (r_in[split_point] - est_params[1])^2 + beta * var(r_in)), 1e-6)
+  # epsilon[1] <- r_in[split_point]
   
-  forecasted_returns <- numeric(n_out)
+  forecasted_volatility <- numeric(n_out)
   
   
   # 
   for (t in 1:n_out) {
     # Forecast next value
-    if (t == 1) {
-      f[t + split_point] <- a + 0.5 * b * ((exp(kappa * P_t_out[t]) - 1) / (exp(kappa * P_t_out[t]) + 1) - (exp(gamma * N_t_out[t]) - 1) / (exp(gamma * N_t_out[t]) + 1))
-    } else {
-      f[t + split_point] <- a + 0.5 * b * ((exp(kappa * P_t_out[t - 1]) - 1) / (exp(kappa * P_t_out[t - 1]) + 1) - (exp(gamma * N_t_out[t - 1]) - 1) / (exp(gamma * N_t_out[t - 1]) + 1))
-    }
+    # if (t == 1) {
+    #   f[t + split_point] <- a + 0.5 * b * ((exp(kappa * P_t_out[t]) - 1) / (exp(kappa * P_t_out[t]) + 1) - (exp(gamma * N_t_out[t]) - 1) / (exp(gamma * N_t_out[t]) + 1))
+    # } else {
+    #   ### f_t should be coming from P_t and N_t, not P_{t-1}
+    #   f[t + split_point] <- a + 0.5 * b * ((exp(kappa * P_t_out[t - 1]) - 1) / (exp(kappa * P_t_out[t - 1]) + 1) - (exp(gamma * N_t_out[t - 1]) - 1) / (exp(gamma * N_t_out[t - 1]) + 1))
+    # }
     
+    f[t + split_point] <- a + 0.5 * b * ((exp(kappa * P_t_out[t]) - 1) / (exp(kappa * P_t_out[t]) + 1) - (exp(gamma * N_t_out[t]) - 1) / (exp(gamma * N_t_out[t]) + 1))
+
     # Adding f corrections
     # if (P_t[t] == 0 && N_t[t] == 0) {
     #   f_t[t] <- 1
     # }
     # 
-    sigma2[t] <- max(f[t + split_point - 1] * (omega + alpha * epsilon[t]^2 + beta * sigma2[t]), 1e-6)
-    epsilon[t] <- r_out[t] - est_params[1]
-    z <- rnorm(1000, mean = 0, sd = 1)
-    forecasted_returns[t] <- est_params[1] + z[t] * sqrt(sigma2[t])
+    sigma2[t + split_point] <- max(f[t + split_point - 1] * (omega + alpha * epsilon[t+ split_point - 1]^2 + beta * sigma2[t+ split_point - 1]), 1e-6)
+    epsilon[t+ split_point] <- r_out[t] - est_params[1]
+    z <- rnorm(n_out, mean = 0, sd = 1)
+    
+    forecasted_volatility[t] <- sigma2[t + split_point]
+      # forecasted_returns <- est_params[1] + z[t] * sqrt(sigma2[t])
   }
+  
+  # realized_volatility <- sqrt(sum(epsilon^2)/((n_out-1)))
+  realized_volatility <- epsilon[(split_point+1):(split_point+n_out)]
+  
   
   ARCH <- FinTS::ArchTest(r)
   ARCH_Test <- ARCH$p.value
-  RMSE <- sqrt(mean((r_out - forecasted_returns)^2, na.rm = TRUE))
-  MAE <- mean(abs(r_out - forecasted_returns), na.rm = TRUE)
+  RMSE <- sqrt(mean((forecasted_volatility - realized_volatility)^2, na.rm = TRUE))
+  MAE <- mean(abs(forecasted_volatility - realized_volatility), na.rm = TRUE)
   
   ##### result list
   result_list <- list(
@@ -222,7 +231,7 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
     ARCH_Test = ARCH_Test,
     ActualReturnsInSample = r_in,
     ActualReturnsOutSample = r_out,
-    ForecastedReturns = forecasted_returns,
+    ForecastedReturns = forecasted_volatility,
     Sigma2 = sigma2,
     f = f
     # , Residuals = epsilon
@@ -259,15 +268,15 @@ generate_parameter_grid <- function(a_range, b_range, kappa_range, gamma_range,
 
 
 # Define parameter ranges and generate the grid
-parameter_grid <- generate_parameter_grid(a_range = c(0.2, 2), 
+parameter_grid <- generate_parameter_grid(a_range = c(0.1, 2), 
                                           a_step = 1,
-                                          b_range = c(0.5, 2),
+                                          b_range = c(0.1, 2),
                                           b_step = 1,
-                                          kappa_range = c(2, 3), 
+                                          kappa_range = c(1, 2), 
                                           kappa_step = 1,
-                                          gamma_range = c(2, 3), 
+                                          gamma_range = c(1, 2), 
                                           gamma_step = 1)
-
+nrow(parameter_grid)
 # Create a loop to run all scenarios - WITHOUT STATUS BAR
 NA_GARCH_output <- list()
 
@@ -279,9 +288,4 @@ for (i in 1:nrow(parameter_grid)) {
 
 NA_GARCH_output
 
-# parameter_grid <- parameter_grid[1:15,]
-
 length(NA_GARCH_output)
-
-
-NA_GARCH_output_t

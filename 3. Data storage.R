@@ -100,7 +100,7 @@ for (i in 2:nrow(parameter_grid)){
 close(pb)
 end_time <- Sys.time()
 total_runtime <- end_time - start_time
-print(paste("Total runtime:", total_runtime))
+total_runtime
 
 ###### DF2 - Parameter values ########
 start_time <- Sys.time()
@@ -145,12 +145,17 @@ for (i in 2:length(NA_GARCH_output)){
 close(pb)
 end_time <- Sys.time()
 total_runtime <- end_time - start_time
-print(paste("Total runtime:", total_runtime))
+total_runtime
+
+
+
 
 Parameter_values_df <- Parameter_values %>%
-  tidyr::pivot_wider(names_from = Parameter, values_from = Value)
+  tidyr::pivot_wider(names_from = Parameter, values_from = Value) %>% 
+  mutate(ab = a+b)
 
 ### Save cases
 Parameter_values_Aux <- Parameter_values
 Parameter_values_df_Aux <- Parameter_values_df
 Return_values_Aux <- Return_values
+
