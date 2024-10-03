@@ -17,6 +17,10 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
   N_t_in <- N_t[1:split_point]
   N_t_out <- N_t[(split_point + 1):n]
   
+  sigma2 <- numeric(length(r))
+  epsilon <- numeric(length(r))
+  f <- numeric(length(r))
+  
   log_likelihood <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, params) {
     split_ratio <- 0.8
     n <- length(r)
@@ -39,9 +43,6 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
     
     # sukuria tuscius ir veliau uzpildo
     n <- length(r_in)
-    sigma2 <- numeric(length(r))
-    epsilon <- numeric(length(r))
-    f <- numeric(length(r))
     
     # Suskaiciuoja pirmine value
     ## naujienu itakos forma, cia imama initial value
