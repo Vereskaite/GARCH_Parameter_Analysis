@@ -19,11 +19,15 @@ generate_parameter_grid_PN <- function(P_range, N_range, P_step, N_step, a, b) {
                                              (exp(4 * N_t_in) - 1) / (exp(4 * N_t_in) + 1)))
   
   grid$f_scenario_2 <- with(grid, 
+                            a + 0.5 * b * ((exp(8 * P_t_in) - 1) / (exp(8 * P_t_in) + 1) - 
+                                             (exp(4 * N_t_in) - 1) / (exp(4 * N_t_in) + 1)))
+  
+  grid$f_scenario_3 <- with(grid, 
                             a + 0.5 * b * ((exp(4 * P_t_in) - 1) / (exp(4 * P_t_in) + 1) - 
                                              (exp(8 * N_t_in) - 1) / (exp(8 * N_t_in) + 1)))
   
-  grid$f_scenario_3 <- with(grid, 
-                            a + 0.5 * b * ((exp(8 * P_t_in) - 1) / (exp(8 * P_t_in) + 1) - 
+  grid$f_scenario_4 <- with(grid, 
+                            a + 0.5 * b * ((exp(16 * P_t_in) - 1) / (exp(16 * P_t_in) + 1) - 
                                              (exp(4 * N_t_in) - 1) / (exp(4 * N_t_in) + 1)))
   
   return(grid)
@@ -81,6 +85,91 @@ plot_scenario_3 <- plot_ly(x = P_values, y = N_values, z = z_values_scenario_3,
 plot_scenario_1
 plot_scenario_2
 plot_scenario_3
+
+
+
+combined_plot <- plot_ly() %>%
+  add_surface(x = P_values, y = N_values, z = z_values_scenario_1, name = "Scenario 1", 
+              colorscale = list(c(0, "blue"), c(1, "lightblue")), showscale = TRUE, opacity = 0.7) %>%
+  add_surface(x = P_values, y = N_values, z = z_values_scenario_2, name = "Scenario 2", 
+              colorscale = list(c(0, "green"), c(1, "lightgreen")), showscale = TRUE, opacity = 0.7) %>%
+  add_surface(x = P_values, y = N_values, z = z_values_scenario_3, name = "Scenario 3", 
+              colorscale = list(c(0, "red"), c(1, "orange")), showscale = TRUE, opacity = 0.7) %>%
+  layout(title = "Combined 3D Surface Plot for All Scenarios",
+         scene = list(xaxis = list(title = "P"),
+                      yaxis = list(title = "N"),
+                      zaxis = list(title = "f_scenario")))
+
+
+### with intersection
+tolerance <- 0.04  # Define a tolerance for considering values equal
+intersection_points <- (abs(z_values_scenario_1 - z_values_scenario_2) < tolerance) & 
+  (abs(z_values_scenario_2 - z_values_scenario_3) < tolerance)
+
+P_intersect <- rep(P_values, each = length(N_values))[intersection_points]
+N_intersect <- rep(N_values, length(P_values))[intersection_points]
+f_intersect <- z_values_scenario_1[intersection_points]
+
+combined_plot_with_intersections <- plot_ly() %>%
+  # add_surface(x = P_values, y = N_values, z = z_values_scenario_1, name = "Scenario 1", 
+  #             colorscale = list(c(0, "blue"), c(1, "lightblue")), showscale = TRUE, opacity = 0.7) %>%
+  add_surface(x = P_values, y = N_values, z = z_values_scenario_2, name = "Scenario 2", 
+              colorscale = list(c(0, "green"), c(1, "lightgreen")), showscale = TRUE, opacity = 0.7) %>%
+  add_surface(x = P_values, y = N_values, z = z_values_scenario_3, name = "Scenario 3", 
+              colorscale = list(c(0, "red"), c(1, "orange")), showscale = TRUE, opacity = 0.7) %>%
+  # Add intersection points as lines
+  add_markers(x = P_intersect, y = N_intersect, z = f_intersect, 
+              marker = list(color = 'black', size = 3), name = "Intersection Points") %>%
+  layout(title = "Combined 3D Surface Plot with Intersections",
+         scene = list(xaxis = list(title = "P"),
+                      yaxis = list(title = "N"),
+                      zaxis = list(title = "f_scenario")))
+
+combined_plot_with_intersections
+
+
+#### matrix
+
+comparison_matrix <- matrix(NA, nrow = length(N_values), ncol = length(P_values))
+
+for (i in 1:length(N_values)) {
+  for (j in 1:length(P_values)) {
+    if (z_values_scenario_2[i, j] > z_values_scenario_3[i, j]) {
+      comparison_matrix[i, j] <- "Scenario 2"
+    } else if (z_values_scenario_2[i, j] < z_values_scenario_3[i, j]) {
+      comparison_matrix[i, j] <- "Scenario 3"
+    } else {
+      comparison_matrix[i, j] <- "Equal"
+    }
+  }
+}
+# comparison_matrix %>% View()
+
+comparison_df <- as.data.frame(comparison_matrix, row.names = N_values, col.names = P_values)
+
+
+
+# # Convert to data frame for plotting
+# comparison_df <- as.data.frame(comparison_numeric)
+# colnames(comparison_df) <- P_values
+# rownames(comparison_df) <- N_values
+# 
+# # Melt the data frame for ggplot2 compatibility
+# comparison_melted <- melt(comparison_df, varnames = c("N", "P"), value.name = "Scenario")
+# 
+# # Plot the heatmap
+# heatmap_plot <- ggplot(comparison_melted, aes(x = P, y = N, fill = Scenario)) +
+#   geom_tile() +
+#   scale_fill_gradient2(low = "blue", mid = "white", high = "red", 
+#                        midpoint = 0, 
+#                        name = "Scenario") +
+#   labs(title = "Heatmap of Scenario Dominance", 
+#        x = "P", 
+#        y = "N") +
+#   theme_minimal()
+# 
+# # Display the heatmap
+# heatmap_plot
 
 ##### Heatmpas of f difference #######
 
@@ -173,3 +262,25 @@ plot_scenarios_smoothed_PN <-  plot_scenarios_smoothed_N + plot_scenarios_smooth
 hist(Data_k4_g4$Positive_Sentiment)
 hist(Data_k4_g4$Negative_Sentiment)
 hist(Data_k4_g4$f_t)
+
+
+### Auxiliary #####
+a <- 0.8
+b <- 0.8
+kappa <- 4
+gamma <- 8
+P_t_in <- 1
+N_t_in <- -0.1
+
+a + 0.5 * b * ((exp(kappa * P_t_in) - 1) / (exp(kappa * P_t_in) + 1) - (exp(gamma * N_t_in) - 1) / (exp(gamma * N_t_in) + 1))
+
+head(PN_dt)
+### all else equal P observation
+PN_dt %>% 
+  filter(N == "-0.1") %>% 
+  # mutate(Index = 1:10) %>% 
+  ggplot()+
+  geom_line(aes(x=P, y=f_scenario_1), color = "black")+
+  geom_line(aes(x=P, y=f_scenario_2), color = "red")+
+  geom_line(aes(x=P, y=f_scenario_3), color = "blue")+
+geom_line(aes(x=P, y=f_scenario_4), color = "brown")
