@@ -4,24 +4,26 @@ options(scipen = 9999)
 # install.packages("tidyr", lib = "R")
 # install.packages("parallel", lib = "R")
 
-library(dplyr, lib.loc = "R")
-library(zoo, lib.loc = "R")
-library(FinTS, lib.loc = "R")
-library(parallel, lib.loc = "R")
+# library(dplyr, lib.loc = "R")
+# library(zoo, lib.loc = "R")
+# library(FinTS, lib.loc = "R")
+# library(parallel, lib.loc = "R")
 
 start_time_total <- Sys.time()
 
-Data_Simulation_function <- function(kappa, gamma) {
+# Define functions
+
+Data_Simulation_function <- function(a_true, b_true, kappa_true, gamma_true) {
   # Parameters
   n <- 5000
   mu <- 0
   omega <- 0.1
   alpha <- 0.1
   beta <- 0.1
-  a <- 0.8
-  b <- 0.8
-  kappa <- kappa
-  gamma <- gamma
+  a <- a_true
+  b <- b_true
+  kappa <- kappa_true
+  gamma <- gamma_true
   
   # Generate data for Half-Normal distribution
   sigma <- 0.5
@@ -103,16 +105,7 @@ Data_Simulation_function <- function(kappa, gamma) {
     Negative_Sentiment = N_t,
     f_t = f_t
   ) 
-  
 }
-
-Data_k4_g4 <- Data_Simulation_function(kappa = 4, gamma = 4)
-
-r <- Data_k4_g4$Returns
-P_t <- Data_k4_g4$Positive_Sentiment
-N_t <- Data_k4_g4$Negative_Sentiment
-
-# Define function for estimation and forecasting
 
 NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, params) {
   
@@ -298,8 +291,6 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
   
 }
 
-# Define function for grid creation
-
 generate_parameter_grid <- function(a_range, b_range, kappa_range, gamma_range,
                                     a_step, b_step, kappa_step, gamma_step) {
   a_values <- seq(a_range[1], a_range[2], by = a_step)
@@ -310,9 +301,12 @@ generate_parameter_grid <- function(a_range, b_range, kappa_range, gamma_range,
   expand.grid(a = a_values, b = b_values, kappa = kappa_values, gamma = gamma_values)
 }
 
+# Create my own function that will run the grid for different parameter selection 
+# and reruns with different epsilons
 
-# Define parameter grid
-
+# Define needed parameters
+sim <- 2
+NA_GARCH_output <- list()
 parameter_grid <- generate_parameter_grid(a_range = c(0.5, 2), 
                                           a_step = 1,
                                           b_range = c(0.5, 2),
@@ -321,194 +315,95 @@ parameter_grid <- generate_parameter_grid(a_range = c(0.5, 2),
                                           kappa_step = 1,
                                           gamma_range = c(2, 4), 
                                           gamma_step = 1)
-# Loop scenarios
-# start_time <- Sys.time()
-# pb <- txtProgressBar(min = 0, max = nrow(parameter_grid), style = 3)
-# 
-# NA_GARCH_output <- list()
-# 
-# for (i in 1:nrow(parameter_grid)) {
-#   NA_GARCH_output[[i]] <- NA_GARCH_Evaluation(r,P_t,N_t,a = parameter_grid[i, 1],b = parameter_grid[i, 2],
-#                                               kappa = parameter_grid[i, 3], gamma = parameter_grid[i, 4],
-#                                               params = c(0.1,0.1,0.1,0.1))
-#   # Update progress bar
-#   setTxtProgressBar(pb, i)
-# 
-# }
-# close(pb)
-# end_time <- Sys.time()
-# total_runtime <- end_time - start_time
-# total_runtime
 
+true_parameters_grid <- data.frame(Name = c("Baseline", "Kappa=5", "Kappa=6", "Kappa=7"),
+                                   a_true = c(0.8,0.8,0.8,0.8),
+                                   b_true = c(0.8,0.8,0.8,0.8),
+                                   kappa_true = c(4,5,6,7),
+                                   gamma_true = c(4,4,4,4))
 
-### Parallelized running through parameter grid
-## added for parallelization
-n_cores <- detectCores() - 1  # Leave 1 core for the OS
-n_cores
+true_parameters_grid <- true_parameters_grid[1:2, ]
+
+Parameter_values <- data.frame(Scenario = character(),
+                               # Scenario_nr = numeric(),
+                               a = numeric(),
+                               b = numeric(),
+                               kappa = numeric(),
+                               gamma = numeric(),
+                               RMSE = numeric(),
+                               MAE = numeric(),
+                               AIC = numeric(),
+                               BIC = numeric())
+
+results <- data.frame()
+
+# Main function
+
+Initial_function <- function(parameter_grid,a_true,b_true,kappa_true,gamma_true) {
+  
+  Data_k4_g4 <- Data_Simulation_function(a_true,b_true,kappa_true, gamma_true)
+  
+  r <- Data_k4_g4$Returns
+  P_t <- Data_k4_g4$Positive_Sentiment
+  N_t <- Data_k4_g4$Negative_Sentiment
+  
+
+  for (i in 1:nrow(parameter_grid)) {
+    NA_GARCH_output[[i]] <- NA_GARCH_Evaluation(r,P_t,N_t,a = parameter_grid[i, 1],b = parameter_grid[i, 2],
+                                                kappa = parameter_grid[i, 3], gamma = parameter_grid[i, 4],
+                                                params = c(0.1,0.1,0.1,0.1))
+  }
+  
+  for (i in 1:length(NA_GARCH_output)){ 
+    Parameter_values <- Parameter_values %>% 
+      bind_rows(
+        data.frame(Scenario = paste(a_true,b_true,kappa_true,gamma_true, sep = "_"),
+                   a = parameter_grid[i,1],
+                   b = parameter_grid[i,2],
+                   kappa = parameter_grid[i,3],
+                   gamma = parameter_grid[i,4],
+                   RMSE = NA_GARCH_output[[i]]$RMSE,
+                   MAE =  NA_GARCH_output[[i]]$MAE,
+                   AIC = NA_GARCH_output[[i]]$AIC,
+                   BIC = NA_GARCH_output[[i]]$BIC
+                         ))
+  }
+
+  Parameter_values
+}
 
 start_time <- Sys.time()
-NA_GARCH_output <- mclapply(1:nrow(parameter_grid), function(i) {
-  NA_GARCH_Evaluation(r, P_t, N_t,
-                      a = parameter_grid[i, 1],
-                      b = parameter_grid[i, 2],
-                      kappa = parameter_grid[i, 3],
-                      gamma = parameter_grid[i, 4],
-                      params = c(0.1, 0.1, 0.1, 0.1))
-}, mc.cores = 2)  # Set the number of cores
+pb_max <- nrow(true_parameters_grid)*sim
+pb <- txtProgressBar(min = 0, max = pb_max, style = 3)
+
+
+for (j in 1:nrow(true_parameters_grid)){
+  for (i in 1:sim) {
+    temp_result <- Initial_function(parameter_grid,a_true = true_parameters_grid[j, 2],
+                                    b_true = true_parameters_grid[j, 3],
+                                    kappa_true = true_parameters_grid[j, 4],
+                                    gamma_true = true_parameters_grid[j, 5])
+    temp_result <- temp_result %>% mutate(Simulation_nr = paste0(i),
+                                          Name = true_parameters_grid[j, 1])
+    results <- rbind(results, temp_result)
+    
+    setTxtProgressBar(pb, i)
+    
+  }
+}
+
+?setTxtProgressBar
+
+
+help(setTxtProgressBar)
+
+close(pb)
 end_time <- Sys.time()
-time_taken <- end_time - start_time
-print(paste("Time taken: ", time_taken))
+total_runtime <- end_time - start_time
+total_runtime
 
 
-# Data storage
-
-# start_time <- Sys.time()
-# pb <- txtProgressBar(min = 0, max = nrow(parameter_grid), style = 3)
-
-### Create table for Scenario 1
-# Add in-sample values
-Return_values <- data.frame(Scenario = paste("SimulatedNAGARCH",
-                                             parameter_grid[1,1],parameter_grid[1,2],parameter_grid[1,3],parameter_grid[1,4],
-                                             sep = "_"),
-                            Index = 1:length(NA_GARCH_output[[1]]$ActualReturnsInSample),
-                            Type = "In-Sample",
-                            Returns = NA_GARCH_output[[1]]$ActualReturnsInSample) %>% 
-  # Add out-sample values
-  bind_rows(
-    data.frame(Scenario = paste("SimulatedNAGARCH",
-                                parameter_grid[1,1],parameter_grid[1,2],parameter_grid[1,3],parameter_grid[1,4],
-                                sep = "_"),
-               Index = (length(NA_GARCH_output[[1]]$ActualReturnsInSample)+1):(length(NA_GARCH_output[[1]]$ActualReturnsInSample)+length(NA_GARCH_output[[1]]$ActualReturnsOutSample)),
-               Type = "Out-Sample",
-               Returns = NA_GARCH_output[[1]]$ActualReturnsOutSample)
-  ) %>% 
-  # Add forecasted values
-  bind_rows(
-    data.frame(Scenario = paste("SimulatedNAGARCH",
-                                parameter_grid[1,1],parameter_grid[1,2],parameter_grid[1,3],parameter_grid[1,4],
-                                sep = "_"),
-               Index = (length(NA_GARCH_output[[1]]$ActualReturnsInSample)+1):(length(NA_GARCH_output[[1]]$ActualReturnsInSample)+length(NA_GARCH_output[[1]]$ForecastedReturns)),
-               Type = "Forecast",
-               Returns = NA_GARCH_output[[1]]$ForecastedReturns)
-  ) %>% 
-  # Add sigma2 values
-  bind_rows(
-    data.frame(Scenario = paste("SimulatedNAGARCH",
-                                parameter_grid[1,1],parameter_grid[1,2],parameter_grid[1,3],parameter_grid[1,4],
-                                sep = "_"),
-               Index = (length(NA_GARCH_output[[1]]$ActualReturnsInSample)+1):(length(NA_GARCH_output[[1]]$ActualReturnsInSample)+length(NA_GARCH_output[[1]]$Sigma2)),
-               Type = "Sigma2",
-               Returns = NA_GARCH_output[[1]]$Sigma2)
-  ) %>% 
-  # Add f values
-  bind_rows(
-    data.frame(Scenario = paste("SimulatedNAGARCH",
-                                parameter_grid[1,1],parameter_grid[1,2],parameter_grid[1,3],parameter_grid[1,4],
-                                sep = "_"),
-               Index = (1:(length(NA_GARCH_output[[1]]$f))),
-               Type = "f",
-               Returns = NA_GARCH_output[[1]]$f
-    )
-  )
-
-### Create loop for further scenarios
-
-for (i in 2:nrow(parameter_grid)){
-  
-  Return_values <- Return_values %>% 
-    bind_rows(
-      data.frame(Scenario = paste("SimulatedNAGARCH",
-                                  parameter_grid[i,1],parameter_grid[i,2],parameter_grid[i,3],parameter_grid[i,4],
-                                  sep = "_"),
-                 Index = 1:length(NA_GARCH_output[[i]]$ActualReturnsInSample),
-                 Type = "In-Sample",
-                 Returns = NA_GARCH_output[[i]]$ActualReturnsInSample)
-    ) %>% 
-    bind_rows(
-      data.frame(Scenario = paste("SimulatedNAGARCH",
-                                  parameter_grid[i,1],parameter_grid[i,2],parameter_grid[i,3],parameter_grid[i,4],
-                                  sep = "_"),
-                 Index = (length(NA_GARCH_output[[i]]$ActualReturnsInSample)+1):(length(NA_GARCH_output[[i]]$ActualReturnsInSample)+length(NA_GARCH_output[[i]]$ActualReturnsOutSample)),
-                 Type = "Out-Sample",
-                 Returns = NA_GARCH_output[[i]]$ActualReturnsOutSample)
-    ) %>% 
-    bind_rows(
-      data.frame(Scenario = paste("SimulatedNAGARCH",
-                                  parameter_grid[i,1],parameter_grid[i,2],parameter_grid[i,3],parameter_grid[i,4],
-                                  sep = "_"),
-                 Index = (length(NA_GARCH_output[[i]]$ActualReturnsInSample)+1):(length(NA_GARCH_output[[i]]$ActualReturnsInSample)+length(NA_GARCH_output[[i]]$ForecastedReturns)),
-                 Type = "Forecast",
-                 Returns = NA_GARCH_output[[i]]$ForecastedReturns)
-    ) %>% 
-    bind_rows(
-      data.frame(Scenario = paste("SimulatedNAGARCH",
-                                  parameter_grid[i,1],parameter_grid[i,2],parameter_grid[i,3],parameter_grid[i,4],
-                                  sep = "_"),
-                 Index = (length(NA_GARCH_output[[i]]$ActualReturnsInSample)+1):(length(NA_GARCH_output[[i]]$ActualReturnsInSample)+length(NA_GARCH_output[[i]]$Sigma2)),
-                 Type = "Sigma2",
-                 Returns = NA_GARCH_output[[i]]$Sigma2)
-    )  %>% 
-    bind_rows(
-      data.frame(Scenario = paste("SimulatedNAGARCH",
-                                  parameter_grid[i,1],parameter_grid[i,2],parameter_grid[i,3],parameter_grid[i,4],
-                                  sep = "_"),
-                 Index = (1:length(NA_GARCH_output[[i]]$f)),
-                 Type = "f",
-                 Returns = NA_GARCH_output[[i]]$f)
-    ) 
-  # setTxtProgressBar(pb, i)
-}
-# 
-# close(pb)
-# end_time <- Sys.time()
-# total_runtime <- end_time - start_time
-# total_runtime
-
-
-Parameter_values <- data.frame(Scenario = paste("SimulatedNAGARCH",
-                                                parameter_grid[1,1],parameter_grid[1,2],parameter_grid[1,3],parameter_grid[1,4],
-                                                sep = "_"),
-                               Parameter = c("a", "b", "kappa", "gamma", 
-                                             "mu", "omega", "alpha", "beta", 
-                                             "mu_p", "omega_p", "alpha_p", "beta_p",
-                                             "mu_sign", "omega_sign", "alpha_sign", "beta_sign",
-                                             "AIC", "BIC", "RMSE", "MAE"), #"ARCH_Test"
-                               Value = c(parameter_grid[1,1],parameter_grid[1,2],parameter_grid[1,3],parameter_grid[1,4],
-                                         NA_GARCH_output[[1]]$Parameters[1], NA_GARCH_output[[1]]$Parameters[2], NA_GARCH_output[[1]]$Parameters[3], NA_GARCH_output[[1]]$Parameters[4],
-                                         NA_GARCH_output[[1]]$PValues[1], NA_GARCH_output[[1]]$PValues[2], NA_GARCH_output[[1]]$PValues[3], NA_GARCH_output[[1]]$PValues[4],
-                                         NA_GARCH_output[[1]]$PValues[1] < 0.05, NA_GARCH_output[[1]]$PValues[2] < 0.05, NA_GARCH_output[[1]]$PValues[3] < 0.05, NA_GARCH_output[[1]]$PValues[4] < 0.05,
-                                         NA_GARCH_output[[1]]$AIC, NA_GARCH_output[[1]]$BIC, NA_GARCH_output[[1]]$RMSE, NA_GARCH_output[[1]]$MAE) ) #NA_GARCH_output[[1]]$ARCH_Test
-
-### Create loop for further scenarios
-
-for (i in 2:length(NA_GARCH_output)){ 
-  Parameter_values <- Parameter_values %>% 
-    bind_rows(
-      data.frame(Scenario = paste("SimulatedNAGARCH",parameter_grid[i,1],parameter_grid[i,2],parameter_grid[i,3],parameter_grid[i,4],
-                                  sep = "_"),
-                 Parameter = c("a", "b", "kappa", "gamma", 
-                               "mu", "omega", "alpha", "beta", 
-                               "mu_p", "omega_p", "alpha_p", "beta_p",
-                               "mu_sign", "omega_sign", "alpha_sign", "beta_sign",
-                               "AIC", "BIC", "RMSE", "MAE"), #"ARCH_Test"
-                 Value = c( parameter_grid[i,1],parameter_grid[i,2],parameter_grid[i,3],parameter_grid[i,4],
-                            NA_GARCH_output[[i]]$Parameters[1], NA_GARCH_output[[i]]$Parameters[2], NA_GARCH_output[[i]]$Parameters[3], NA_GARCH_output[[i]]$Parameters[4],
-                            NA_GARCH_output[[i]]$PValues[1], NA_GARCH_output[[i]]$PValues[2], NA_GARCH_output[[i]]$PValues[3], NA_GARCH_output[[i]]$PValues[4],
-                            NA_GARCH_output[[i]]$PValues[1] < 0.05, NA_GARCH_output[[i]]$PValues[2] < 0.05, NA_GARCH_output[[i]]$PValues[3] < 0.05, NA_GARCH_output[[i]]$PValues[4] < 0.05,
-                            NA_GARCH_output[[i]]$AIC, NA_GARCH_output[[i]]$BIC, NA_GARCH_output[[i]]$RMSE, NA_GARCH_output[[i]]$MAE) ) #NA_GARCH_output[[i]]$ARCH_Test
-    )
-}
-
-
-# Parameter_values_df <- Parameter_values %>%
-#   tidyr::pivot_wider(names_from = Parameter, values_from = Value) %>% 
-#   mutate(ab = a+b)
-
-### Save data to csv output
-
-write.csv(Parameter_values, "Parameter_values_v1.csv")
-# write.csv(Parameter_values_df, "Parameter_values_df.csv")
-write.csv(Return_values, "Return_values_v1.csv")
+write.csv(results, "results.csv")
 
 end_time_total <- Sys.time()
 runtime_all <- end_time_total - start_time_total
