@@ -1,7 +1,4 @@
-# Data pool ########
-Return_values_Aux <- na.omit(Return_values_Aux)
-Parameter_values_Aux <- na.omit(Parameter_values_Aux)
-Parameter_values_df_Aux <- na.omit(Parameter_values_df_Aux)
+
 
 # Problematic scenarios ##########
 Parameter_values_Aux %>% 
@@ -64,6 +61,11 @@ summary(Parameter_values_Aux %>%
           tidyr::pivot_wider(names_from = Parameter, values_from = Value))
 
 summary(Parameter_values_df_Aux)
+
+# Data pool ########
+Return_values_Aux <- na.omit(Return_values_Aux)
+Parameter_values_Aux <- na.omit(Parameter_values_Aux)
+Parameter_values_df_Aux <- na.omit(Parameter_values_df_Aux)
 
 # Check distributions
 Parameter_values_Aux1 <- Parameter_values_df_Aux %>%
@@ -157,28 +159,104 @@ grid.arrange(hist_AIC_BIC,hist_RMSE_MAE,hist_a_b,hist_ab,hist_kappa_gamma,hist_a
 
 #### plot a few TS
 
-example_TS <- Return_values_Aux %>% 
-  filter(Scenario == "SimulatedNAGARCH_0.5_0.5_1_1")
+Parameter_values_df_Aux %>% 
+  group_by(Scenario) %>% 
+  summarise(rmse = mean(RMSE))
+  # select(rmse) %>% 
 
-ggplot(example_TS %>% filter(Type %in% c("In-Sample","Forecast","Out-Sample")), 
+example_TS <- Return_values_Aux  
+# %>% 
+#   filter(Scenario == "SimulatedNAGARCH_0.8_0.8_4_4")
+
+# Return_values_Aux %>% 
+#   group_by(Scenario) %>% 
+#   summarise()
+# 
+# 
+# 
+# ggplot(example_TS %>% filter(Type %in% c("In-Sample","Return Forecast","Out-Sample")), 
+#        aes(x=Index, y =Returns, color = Type, alpha = Type))+
+#   geom_line() +
+#   scale_alpha_manual(values = c("In-Sample" = 1, "Return Forecast" = 0.6, "Out-Sample" = 0.3))+
+#   labs(title = "Example Time Series Plot", x = "Index", y = "Returns", color = "Type", alpha = "Type") +
+#   theme_minimal()+ 
+#   theme(
+#     legend.position = "bottom",  # Position legend at the bottom
+#     legend.justification = "center" 
+#   )
+# 
+# head(example_TS)
+?geom_line
+r
+
+plot(sqrt(r[1500:2000]^2), col = "grey", type = "l", alpha = 0.3)
+lines(rollmean(sqrt(r[1500:2000]^2), 10), col = "black")
+# lines(rollmean(sqrt(r[1500:2000]^2), 20), col = "brown")
+lines(example_TS %>% 
+        filter(Type %in% c("Volatility Forecast")) %>% select(Returns), col = "red")
+lines(example_TS %>% 
+        filter(Type %in% c("Realized Volatility")) %>% select(Returns), col = "blue")
+legend("topright", legend = c("Raw Volatility", "10-day Rolling Mean", "Volatility Forecast", "Realized Volatility"),
+       col = c("grey", "black", "red", "blue"), lwd = 1.5, cex = 0.8)
+
+rollmean(sqrt(r[1500:2000]^2), 10)
+?rollmean
+
+ggplot(example_TS %>% 
+         filter(Type %in% c("Realized Volatility","Volatility Forecast")) %>% 
+         filter(Index > 2000), 
        aes(x=Index, y =Returns, color = Type, alpha = Type))+
   geom_line() +
-  scale_alpha_manual(values = c("In-Sample" = 1, "Forecast" = 1, "Out-Sample" = 0.3))+
-  # geom_line(data = subset(example_TS, Type == "In-Sample"), color = "grey", alpha = 1) +  # In-Sample lines
-  # geom_line(data = subset(example_TS, Type == "Forecast"), color = "blue", alpha = 1) +     # Forecast lines
-  # geom_line(data = subset(example_TS, Type == "Out-Sample"), color = "red", alpha = 0.3) +   # Out-Sample lines
-  # scale_color_manual(values = c("In-Sample" = "black", "Forecast" = "blue", "Out-Sample" = "red")) +  # Colors for legend
-  # scale_alpha_manual(values = c("In-Sample" = 1, "Forecast" = 1, "Out-Sample" = 0.3)) +  # Alpha for legend
   labs(title = "Example Time Series Plot", x = "Index", y = "Returns", color = "Type", alpha = "Type") +
+  scale_alpha_manual(values = c("Realized Volatility" = 0.3, "Volatility Forecast" = 1))+
   theme_minimal()+ 
   theme(
     legend.position = "bottom",  # Position legend at the bottom
-    legend.justification = "center" 
-  )
+    legend.justification = "center" )
 
-plot.ts(example_TS %>% filter(Type == "f" & Index >2000) %>% dplyr::select(Returns))
-# ALL VALUES BELOW 1, ALWAYS MINIMIZING
+ggplot() %>% 
+  geom_line(example_TS %>% 
+              filter(Type %in% c("Volatility Forecast")), mapping = aes( x=Index, y =Returns))
 
+example_TS$Index
+
+example_TS %>% filter(Type %in% c("Volatility Forecast")) %>% select(Index)
+
+nrow(daily_std_dev)
+
+ggplot() +
+  geom_line(data = example_TS %>% filter(Type %in% c("Volatility Forecast")),
+            aes(x = Index, y = Returns)) +
+  geom_line(data = daily_std_dev %>% mutate(Index = 200:261), aes(x = Index, y = daily_std_dev), color = "blue") +
+  labs(y = "Returns / Daily Std Dev", x = "Index") +
+  theme_minimal()
+
+plot(example_TS$Index[example_TS$Type == "Volatility Forecast"], 
+     example_TS$Returns[example_TS$Type == "Volatility Forecast"], 
+     type = "l", 
+     col = "black", 
+     ylab = "Returns / Daily Std Dev", 
+     xlab = "Index")
+
+# Then add the daily standard deviation
+lines(daily_std_dev$daily_std_dev, col = "blue")
+
+mean(example_TS$Returns[example_TS$Type == "Volatility Forecast"])
+mean(daily_std_dev$daily_std_dev)
+
+
+example_TS %>% 
+  filter(Type %in% c("Realized Volatility", "Volatility Forecast")) %>% 
+  filter(Index >= 4000) %>% 
+  group_by(Type) %>% 
+  summarise(avg = mean(Returns, na.rm = TRUE),
+            stdev = STDEV(Returns))
+
+
+example_TS %>% 
+  filter(Type %in% c("Realized Volatility")) %>% 
+  filter(Index >= 4000) %>% 
+  View()
 
 ## checking f values, are they higher or lower than 1
 Return_values_Aux %>% 
