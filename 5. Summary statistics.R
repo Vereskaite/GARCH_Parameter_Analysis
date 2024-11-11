@@ -164,7 +164,7 @@ Parameter_values_df_Aux %>%
   summarise(rmse = mean(RMSE))
   # select(rmse) %>% 
 
-example_TS <- Return_values_Aux  
+
 # %>% 
 #   filter(Scenario == "SimulatedNAGARCH_0.8_0.8_4_4")
 
@@ -186,8 +186,14 @@ example_TS <- Return_values_Aux
 #   )
 # 
 # head(example_TS)
-?geom_line
-r
+
+Return_values_Aux %>% 
+  group_by(Scenario) %>% 
+  summarise(n = n())
+
+example_TS <- Return_values_Aux  %>% 
+  filter(Scenario == "SimulatedNAGARCH_0.5_0.5_2_3")
+  
 
 plot(sqrt(r[1500:2000]^2), col = "grey", type = "l", alpha = 0.3)
 lines(rollmean(sqrt(r[1500:2000]^2), 10), col = "black")
@@ -199,26 +205,33 @@ lines(example_TS %>%
 legend("topright", legend = c("Raw Volatility", "10-day Rolling Mean", "Volatility Forecast", "Realized Volatility"),
        col = c("grey", "black", "red", "blue"), lwd = 1.5, cex = 0.8)
 
-rollmean(sqrt(r[1500:2000]^2), 10)
-?rollmean
+
+example_TS %>% 
+  filter(Type %in% c("Realized Volatility","Volatility Forecast","Historical Volatility")) %>% View()
 
 ggplot(example_TS %>% 
-         filter(Type %in% c("Realized Volatility","Volatility Forecast")) %>% 
-         filter(Index > 2000), 
+         filter(Type %in% c("Realized Volatility","Volatility Forecast","Historical Volatility")), 
        aes(x=Index, y =Returns, color = Type, alpha = Type))+
   geom_line() +
   labs(title = "Example Time Series Plot", x = "Index", y = "Returns", color = "Type", alpha = "Type") +
-  scale_alpha_manual(values = c("Realized Volatility" = 0.3, "Volatility Forecast" = 1))+
+  scale_alpha_manual(values = c("Realized Volatility" = 0.3,"Historical Volatility" = 0.3, "Volatility Forecast" = 1))+
   theme_minimal()+ 
   theme(
     legend.position = "bottom",  # Position legend at the bottom
     legend.justification = "center" )
 
-ggplot() %>% 
-  geom_line(example_TS %>% 
-              filter(Type %in% c("Volatility Forecast")), mapping = aes( x=Index, y =Returns))
+names(example_TS)
 
-example_TS$Index
+example_TS %>% filter(Type == "Sigma2") %>% 
+  ggplot(aes(x=Index, y=Returns))+
+  geom_line()
+
+example_TS %>% 
+  group_by(Type) %>% 
+  summarise()
+
+Parameter_values %>% filter(Parameter == "RMSE_HV")
+Parameter_values %>% filter(Parameter == "RMSE_RV")
 
 example_TS %>% filter(Type %in% c("Volatility Forecast")) %>% select(Index)
 
