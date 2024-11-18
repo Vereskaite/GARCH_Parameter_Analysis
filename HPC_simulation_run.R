@@ -4,10 +4,10 @@ options(scipen = 9999)
 # install.packages("tidyr", lib = "R")
 # install.packages("parallel", lib = "R")
 
-# library(dplyr, lib.loc = "R")
-# library(zoo, lib.loc = "R")
-# library(FinTS, lib.loc = "R")
-# library(parallel, lib.loc = "R")
+library(dplyr, lib.loc = "R")
+library(zoo, lib.loc = "R")
+library(FinTS, lib.loc = "R")
+library(parallel, lib.loc = "R")
 
 start_time_total <- Sys.time()
 
@@ -15,7 +15,10 @@ start_time_total <- Sys.time()
 
 Data_Simulation_function <- function(a_true, b_true, kappa_true, gamma_true) {
   # Parameters
-  n <- 5000
+  days <- 2500
+  # nr of 5 minute intervals
+  intraday_steps <- 78
+  n <- days*intraday_steps
   mu <- 0
   omega <- 0.1
   alpha <- 0.1
@@ -107,7 +110,7 @@ Data_Simulation_function <- function(a_true, b_true, kappa_true, gamma_true) {
   ) 
 }
 
-NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, params) {
+NA_GARCH_Evaluation <- function(r, r_intraday, P_t, N_t, a, b, kappa, gamma, split_ratio, params) {
   
   # Split data into in-out sample
   split_ratio <- 0.8
@@ -124,7 +127,7 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
   epsilon <- numeric(length(r))
   f <- numeric(length(r))
   
-  log_likelihood <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, params) {
+  log_likelihood <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, params, return_full) {
     split_ratio <- 0.8
     n <- length(r)
     split_point <- floor(split_ratio * n)
@@ -165,7 +168,11 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
       epsilon[t] <- r_in[t] - mu
       logL <- logL - 0.5 * (log(2 * pi) + log(sigma2[t]) + (epsilon[t]^2 / sigma2[t]))
     }
-    -logL
+    if (return_full) {
+      return(list(log_l = -logL, f = f, sigma2 = sigma2, epsilon = epsilon))
+    } else {
+      return(-logL)
+    }
   }
   
   
@@ -177,31 +184,31 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
   fit <- tryCatch({
     # First attempt using "BFGS"
     optim(start_params, log_likelihood,
-          r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,
+          r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,return_full = FALSE,
           method = "BFGS", hessian = TRUE, control = list(maxit = 500, reltol = 1e-8))
   }, error = function(e) {
     # If "BFGS" does not converge, try "Nelder-Mead"
     tryCatch({
       optim(start_params, log_likelihood,
-            r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,
+            r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,return_full = FALSE,
             method = "Nelder-Mead", hessian = TRUE, control = list(maxit = 500, reltol = 1e-8))
     }, error = function(e) {
       # If "Nelder-Mead" does not converge, try "L-BFGS-B"
       tryCatch({
         optim(start_params, log_likelihood,
-              r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,
+              r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,return_full = FALSE,
               method = "L-BFGS-B", hessian = TRUE, control = list(maxit = 500, reltol = 1e-8))
       }, error = function(e) {
         # If "L-BFGS-B" does not converge, try "CG"
         tryCatch({
           optim(start_params, log_likelihood,
-                r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,
+                r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,return_full = FALSE,
                 method = "CG", hessian = TRUE, control = list(maxit = 500, reltol = 1e-8))
         }, error = function(e) {
           # If "CG" does not converge, try "SANN"
           tryCatch({
             optim(start_params, log_likelihood,
-                  r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,
+                  r = r, P_t = P_t, N_t = N_t, a = a, b = b, kappa = kappa, gamma = gamma, split_ratio = 0.8,return_full = FALSE,
                   method = "SANN", hessian = TRUE, control = list(maxit = 500, reltol = 1e-8))
           }, error = function(e) {
             # If all methods fail, return the initial parameters with a "Do not converge" message
@@ -246,6 +253,13 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
   }
   
   forecasted_volatility <- numeric(n_out)
+  forecasted_returns <- numeric(n_out)
+  
+  Logl_output <-  log_likelihood(r, P_t, N_t, a, b, kappa, gamma, split_ratio = 0.8, params, return_full = TRUE)  
+  
+  f <- Logl_output$f
+  sigma2 <- Logl_output$sigma2
+  epsilon  <- Logl_output$epsilon
   
   for (t in 1:n_out) {
     f[t + split_point] <- a + 0.5 * b * ((exp(kappa * P_t_out[t]) - 1) / (exp(kappa * P_t_out[t]) + 1) - (exp(gamma * N_t_out[t]) - 1) / (exp(gamma * N_t_out[t]) + 1))
@@ -254,18 +268,76 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
     epsilon[t+ split_point] <- r_out[t] - est_params[1]
     z <- rnorm(n_out, mean = 0, sd = 1)
     
-    forecasted_volatility[t] <- sigma2[t + split_point]
-    # forecasted_returns <- est_params[1] + z[t] * sqrt(sigma2[t])
+    forecasted_volatility[t] <- sqrt(sigma2[t + split_point])
+    forecasted_returns[t] <- est_params[1] + z[t] * sqrt(sigma2[t+split_point])
   }
   
   # realized_volatility <- sqrt(sum(epsilon^2)/((n_out-1)))
-  realized_volatility <- epsilon[(split_point+1):(split_point+n_out)]
+  # realized_volatility <- epsilon[(split_point+1):(split_point+n_out)]
+  # realized_volatility <- STDEV(epsilon)
   
   
+
+  # realisedVolatility <- function(returns) {
+  #   # Create a vector of zeros for RV, with the same length as returns
+  #   RV <- numeric(length(returns))
+  #   
+  #   # Loop through the returns to calculate squared returns for RV
+  #   for (i in 1:length(returns)) {
+  #     RV[i] <- returns[i]^2
+  #   }
+  #   
+  #   return(RV)
+  # }
+  # 
+  # RV <- realisedVolatility(r)
+  
+  # realisedVolatility <- function(returns, RVstepSize) {
+  #   RV <- rep(NA, length(returns))  # Initialize realized volatility vector
+  #   mean_returns <- mean(returns)  # Calculate mean of returns
+  #   centered_returns <- returns - mean_returns  # Center returns around zero
+  #   
+  #   for (i in 1:(length(centered_returns) - RVstepSize)) {
+  #     RV[i + RVstepSize - 1] <- sd(centered_returns[i:(i + RVstepSize - 1)])  # Calculate standard deviation of centered returns
+  #   }
+  #   return(RV)
+  # }
+  
+  calculate_rmse <- function(realized_volatility, forecasted_volatility) {
+    # Remove NA values for the out-of-sample period
+    valid_indices <- !is.na(realized_volatility[(length(realized_volatility) - length(forecasted_volatility) + 1):length(realized_volatility)]) & 
+      !is.na(forecasted_volatility)
+    squared_errors <- (forecasted_volatility[valid_indices] - realized_volatility[(length(realized_volatility) - length(forecasted_volatility) + 1):length(realized_volatility)][valid_indices])^2
+    rmse <- sqrt(mean(squared_errors))
+    return(rmse)
+  }
+  
+  # Function to calculate MAE
+  calculate_mae <- function(realized_volatility, forecasted_volatility) {
+    # Remove NA values for the out-of-sample period
+    valid_indices <- !is.na(realized_volatility[(length(realized_volatility) - length(forecasted_volatility) + 1):length(realized_volatility)]) & 
+      !is.na(forecasted_volatility)
+    absolute_errors <- abs(forecasted_volatility[valid_indices] - realized_volatility[(length(realized_volatility) - length(forecasted_volatility) + 1):length(realized_volatility)][valid_indices])
+    mae <- mean(absolute_errors)
+    return(mae)
+  }
+  
+  # realized_volatility <- realisedVolatility(r, 5)
+  historical_volatility <- sqrt((r-mean(r))^2)
+  realized_volatility <- sqrt(rollapply((r_intraday-mean(r_intraday))^2, width = 78, by = 78, FUN = sum, align = "right", partial = FALSE))
+  
+  
+  RMSE_RV <- calculate_rmse(realized_volatility, forecasted_volatility)
+  RMSE_HV <- calculate_rmse(historical_volatility, forecasted_volatility)
+  
+  MAE_RV <- calculate_mae(realized_volatility, forecasted_volatility)
+  MAE_HV <- calculate_mae(historical_volatility, forecasted_volatility)
+
+
   # ARCH <- FinTS::ArchTest(r)
   # ARCH_Test <- as.numeric(ARCH$p.value)
-  RMSE <- sqrt(mean((forecasted_volatility - abs(realized_volatility))^2, na.rm = TRUE))
-  MAE <- mean(abs(forecasted_volatility - abs(realized_volatility)), na.rm = TRUE)
+  # RMSE <- sqrt(mean((forecasted_volatility - abs(realized_volatility))^2, na.rm = TRUE))
+  # MAE <- mean(abs(forecasted_volatility - abs(realized_volatility)), na.rm = TRUE)
   
   ##### result list
   result_list <- list(
@@ -275,12 +347,16 @@ NA_GARCH_Evaluation <- function(r, P_t, N_t, a, b, kappa, gamma, split_ratio, pa
     PValues = p_values,
     AIC = AIC,
     BIC = BIC,
-    RMSE = RMSE,
-    MAE = MAE,
+    RMSE_HV = RMSE_HV,
+    RMSE_RV = RMSE_RV,
+    MAE_HV = MAE_HV,
+    MAE_RV = MAE_RV,
     # ARCH_Test = ARCH_Test,
     ActualReturnsInSample = r_in,
     ActualReturnsOutSample = r_out,
-    ForecastedReturns = forecasted_volatility,
+    ForecastedVolatility = forecasted_volatility,
+    ForecastedReturns = forecasted_returns,
+    RealizedVolatility = realized_volatility,
     Sigma2 = sigma2,
     f = f
     # , Residuals = epsilon
@@ -307,6 +383,8 @@ generate_parameter_grid <- function(a_range, b_range, kappa_range, gamma_range,
 # Define needed parameters
 sim <- 2
 NA_GARCH_output <- list()
+
+# Test parameter grid
 parameter_grid <- generate_parameter_grid(a_range = c(0.5, 2), 
                                           a_step = 1,
                                           b_range = c(0.5, 2),
@@ -315,8 +393,17 @@ parameter_grid <- generate_parameter_grid(a_range = c(0.5, 2),
                                           kappa_step = 1,
                                           gamma_range = c(2, 4), 
                                           gamma_step = 1)
+parameter_grid <- parameter_grid[1:2, ]
 
-true_parameters_grid <- data.frame(Name = c("Baseline", "Kappa=5", "Kappa=6", "Kappa=7"),
+# Selected parameter grid
+# a_values <- c(0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.2,1.4,1.6,1.8,2,2.2,2.4,2.6,2.8,3)
+# b_values <- c(0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.2,1.4,1.6,1.8,2,2.2,2.4,2.6,2.8,3)
+# kappa_values <- c(0.25,0.5,0.75,1,2,3,4,5,6,7,8,9,10,12,14,16,18,20)
+# gamma_values <- c(0.25,0.5,0.75,1,2,3,4,5,6,7,8,9,10,12,14,16,18,20)
+# 
+# parameter_grid <- expand.grid(a_values, b_values, kappa_values, gamma_values)
+
+  true_parameters_grid <- data.frame(Name = c("Baseline", "Kappa=5", "Kappa=6", "Kappa=7"),
                                    a_true = c(0.8,0.8,0.8,0.8),
                                    b_true = c(0.8,0.8,0.8,0.8),
                                    kappa_true = c(4,5,6,7),
@@ -330,8 +417,10 @@ Parameter_values <- data.frame(Scenario = character(),
                                b = numeric(),
                                kappa = numeric(),
                                gamma = numeric(),
-                               RMSE = numeric(),
-                               MAE = numeric(),
+                               RMSE_HV = numeric(),
+                               RMSE_RV = numeric(),
+                               MAE_HV = numeric(),
+                               MAE_RV = numeric(),
                                AIC = numeric(),
                                BIC = numeric())
 
@@ -343,13 +432,19 @@ Initial_function <- function(parameter_grid,a_true,b_true,kappa_true,gamma_true)
   
   Data_k4_g4 <- Data_Simulation_function(a_true,b_true,kappa_true, gamma_true)
   
-  r <- Data_k4_g4$Returns
-  P_t <- Data_k4_g4$Positive_Sentiment
-  N_t <- Data_k4_g4$Negative_Sentiment
+  # Intra-day split
+  r_intraday <- Data_k4_g4$Returns
+  P_t_intraday <- Data_k4_g4$Positive_Sentiment
+  N_t_intraday <- Data_k4_g4$Negative_Sentiment
+  
+  # r <- sqrt(rollapply(r_intraday^2, width = 78, by = 78, FUN = sum, align = "right", partial = FALSE))
+  r <- rollapply(r_intraday, width = 78, by = 78, FUN = sum, align = "right", partial = FALSE)
+  P_t <- P_t_intraday[seq(1, length(P_t_intraday), by = 78)]
+  N_t <- N_t_intraday[seq(1, length(N_t_intraday), by = 78)]
   
 
   for (i in 1:nrow(parameter_grid)) {
-    NA_GARCH_output[[i]] <- NA_GARCH_Evaluation(r,P_t,N_t,a = parameter_grid[i, 1],b = parameter_grid[i, 2],
+    NA_GARCH_output[[i]] <- NA_GARCH_Evaluation(r,r_intraday, P_t,N_t,a = parameter_grid[i, 1],b = parameter_grid[i, 2],
                                                 kappa = parameter_grid[i, 3], gamma = parameter_grid[i, 4],
                                                 params = c(0.1,0.1,0.1,0.1))
   }
@@ -362,8 +457,10 @@ Initial_function <- function(parameter_grid,a_true,b_true,kappa_true,gamma_true)
                    b = parameter_grid[i,2],
                    kappa = parameter_grid[i,3],
                    gamma = parameter_grid[i,4],
-                   RMSE = NA_GARCH_output[[i]]$RMSE,
-                   MAE =  NA_GARCH_output[[i]]$MAE,
+                   RMSE_HV = NA_GARCH_output[[i]]$RMSE_HV,
+                   RMSE_RV = NA_GARCH_output[[i]]$RMSE_RV,
+                   MAE_HV =  NA_GARCH_output[[i]]$MAE_HV,
+                   MAE_RV =  NA_GARCH_output[[i]]$MAE_RV,
                    AIC = NA_GARCH_output[[i]]$AIC,
                    BIC = NA_GARCH_output[[i]]$BIC
                          ))
@@ -372,10 +469,12 @@ Initial_function <- function(parameter_grid,a_true,b_true,kappa_true,gamma_true)
   Parameter_values
 }
 
+
+### No parallelization
+
 start_time <- Sys.time()
 pb_max <- nrow(true_parameters_grid)*sim
 pb <- txtProgressBar(min = 0, max = pb_max, style = 3)
-
 
 for (j in 1:nrow(true_parameters_grid)){
   for (i in 1:sim) {
@@ -386,16 +485,11 @@ for (j in 1:nrow(true_parameters_grid)){
     temp_result <- temp_result %>% mutate(Simulation_nr = paste0(i),
                                           Name = true_parameters_grid[j, 1])
     results <- rbind(results, temp_result)
-    
+
     setTxtProgressBar(pb, i)
-    
+
   }
 }
-
-?setTxtProgressBar
-
-
-help(setTxtProgressBar)
 
 close(pb)
 end_time <- Sys.time()
@@ -403,8 +497,11 @@ total_runtime <- end_time - start_time
 total_runtime
 
 
+### With parallelization
+
 write.csv(results, "results.csv")
 
 end_time_total <- Sys.time()
 runtime_all <- end_time_total - start_time_total
 runtime_all
+
