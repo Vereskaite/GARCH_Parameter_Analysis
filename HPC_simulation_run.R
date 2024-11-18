@@ -473,8 +473,8 @@ Initial_function <- function(parameter_grid,a_true,b_true,kappa_true,gamma_true)
 ### No parallelization
 
 start_time <- Sys.time()
-pb_max <- nrow(true_parameters_grid)*sim
-pb <- txtProgressBar(min = 0, max = pb_max, style = 3)
+# pb_max <- nrow(true_parameters_grid)*sim
+# pb <- txtProgressBar(min = 0, max = pb_max, style = 3)
 
 for (j in 1:nrow(true_parameters_grid)){
   for (i in 1:sim) {
@@ -486,7 +486,7 @@ for (j in 1:nrow(true_parameters_grid)){
                                           Name = true_parameters_grid[j, 1])
     results <- rbind(results, temp_result)
 
-    setTxtProgressBar(pb, i)
+    # setTxtProgressBar(pb, i)
 
   }
 }
