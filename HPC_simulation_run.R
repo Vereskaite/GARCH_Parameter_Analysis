@@ -381,7 +381,7 @@ generate_parameter_grid <- function(a_range, b_range, kappa_range, gamma_range,
 # and reruns with different epsilons
 
 # Define needed parameters
-sim <- 2
+sim <- 30
 NA_GARCH_output <- list()
 
 # Test parameter grid
@@ -483,7 +483,8 @@ for (j in 1:nrow(true_parameters_grid)){
                                     kappa_true = true_parameters_grid[j, 4],
                                     gamma_true = true_parameters_grid[j, 5])
     temp_result <- temp_result %>% mutate(Simulation_nr = paste0(i),
-                                          Name = true_parameters_grid[j, 1])
+                                          Name = true_parameters_grid[j, 1]) %>% 
+      select(Name, Scenario, Simulation_nr, everything())
     results <- rbind(results, temp_result)
 
     # setTxtProgressBar(pb, i)
@@ -491,17 +492,57 @@ for (j in 1:nrow(true_parameters_grid)){
   }
 }
 
-close(pb)
+# close(pb)
 end_time <- Sys.time()
 total_runtime <- end_time - start_time
 total_runtime
 
 
-### With parallelization
-
 write.csv(results, "results.csv")
 
-end_time_total <- Sys.time()
-runtime_all <- end_time_total - start_time_total
-runtime_all
+### With parallelization
 
+# Function to run the simulation in parallel
+# run_simulation_parallel <- function(true_parameters_grid, parameter_grid, sim) {
+#   
+#   # Define number of cores for parallel processing (e.g., 4 cores)
+#   num_cores <- detectCores() - 1  # Use all available cores except one
+#   num_cores <- 2
+#   
+#   # Parallelized execution using mclapply
+#   results_list <- mclapply(1:nrow(true_parameters_grid), function(j) {
+#     # Collect the results for each row of the true_parameters_grid
+#     temp_results <- list()
+#     
+#     for (i in 1:sim) {
+#       temp_result <- Initial_function(parameter_grid, 
+#                                       a_true = true_parameters_grid[j, 2], 
+#                                       b_true = true_parameters_grid[j, 3], 
+#                                       kappa_true = true_parameters_grid[j, 4], 
+#                                       gamma_true = true_parameters_grid[j, 5])
+#       
+#       # Add simulation number and name
+#       temp_result <- temp_result %>% mutate(Simulation_nr = paste0(i), 
+#                                             Name = true_parameters_grid[j, 1]) %>% 
+#       select(Name, Scenario, Simulation_nr, everything())
+#       
+#       temp_results[[i]] <- temp_result  # Store results for this simulation
+#     }
+#     
+#     # Combine all simulation results for this parameter set
+#     combined_result <- do.call(rbind, temp_results)
+#     return(combined_result)
+#   }, mc.cores = num_cores)  # Specify number of cores for parallel execution
+#   
+#   # Combine all results from the list into a single data frame
+#   final_results <- do.call(rbind, results_list)
+#   
+#   return(final_results)
+# }
+# 
+# start_time <- Sys.time()
+# final_results <- run_simulation_parallel(true_parameters_grid, parameter_grid, sim)
+# end_time <- Sys.time()
+# total_runtime <- end_time - start_time
+# total_runtime
+# write.csv(results, "results.csv")
