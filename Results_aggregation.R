@@ -1,5 +1,10 @@
 library(ggplot2)
 library(dplyr)
+library(tidyr)
+library(pat)
+library(grid)
+library(ggcorrplot)
+library(corrplot)
 # Table 1 - all scenarios, simulations and grid
 # Get all objects that start with "results_parallel"
 # List all CSV files in the working directory that start with "results_parallel"
@@ -163,15 +168,125 @@ ggplot(Simulation_aggregate, aes(x = Value, y = BIC)) +
 
 
 ### Relationship between parameters
-Simulation_aggregate
-results
 
-ggplot(results, aes(x = a, y = b, fill = RMSE_RV)) +
-  geom_tile() +  # Create the heatmap tiles
-  scale_fill_gradient(low = "dark blue", high = " light blue") +  # Color gradient for AIC values
-  labs(title = "Heatmap of RMSE_RV for a vs b", x = "Parameter a", y = "Parameter b", fill = "RMSE_RV") +
-  theme_minimal()  # Clean theme for better visualization
+# RMSE_RV
 
+# Create a list to store the plots
+plots_list <- list()
 
-results %>% select(RMSE_RV) %>% summarise(min = min(RMSE_RV), max=max(RMSE_RV))
+# Define the parameter combinations
+param_combinations <- list(
+  c("a", "b"),
+  c("a", "kappa"),
+  c("a", "gamma"),
+  c("b", "kappa"),
+  c("b", "gamma"),
+  c("kappa", "gamma")
+)
+
+# Loop through each parameter combination and create the heatmap
+for (params in param_combinations) {
   
+  # Aggregate the data for each combination of parameters
+  aggregated_data <- results %>%
+    group_by(across(all_of(params))) %>%
+    summarize(mean_RMSE_RV = mean(RMSE_RV, na.rm = TRUE), .groups = 'drop')
+  
+  # Create the plot for each parameter combination and store it in the list
+  plot <- ggplot(aggregated_data, aes(x = .data[[params[1]]], y = .data[[params[2]]], fill = mean_RMSE_RV)) +  
+    geom_tile(width = 1, height = 1) +  
+    scale_fill_gradient(low = "blue", high = "red") +  
+    labs(title = paste(params[1], "and", params[2]), 
+         x = params[1], y = params[2], fill = "Mean RMSE RV") + 
+    theme_minimal() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.key.size = unit(0.2, "cm"),  # Adjust the size of legend keys
+          legend.text = element_text(size = 4),  # Adjust the text size in the legend
+          legend.title = element_text(size = 5))  # Adjust the title size in the legend
+  
+  # Add the plot to the list
+  plots_list[[paste(params[1], params[2], sep = "_vs_")]] <- plot
+}
+
+title <- textGrob("RMSE_RV", gp = gpar(fontsize = 16, fontface = "bold"))
+grid.arrange(grobs = plots_list, ncol = 3, top = title) 
+
+# RMSE_HV
+
+# Create a list to store the plots
+plots_list <- list()
+
+# Define the parameter combinations
+param_combinations <- list(
+  c("a", "b"),
+  c("a", "kappa"),
+  c("a", "gamma"),
+  c("b", "kappa"),
+  c("b", "gamma"),
+  c("kappa", "gamma")
+)
+
+# Metrics you want to plot
+metrics <- c("RMSE_RV", "RMSE_HV", "AIC", "BIC")
+
+# Loop through each metric
+for (metric in metrics) {
+  
+  # Create a list to store plots for each metric
+  metric_plots <- list()
+  
+  for (params in param_combinations) {
+    
+    # Aggregate the data for each combination of parameters
+    aggregated_data <- results %>%
+      group_by(across(all_of(params))) %>%
+      summarize(mean_value = mean(.data[[metric]], na.rm = TRUE), .groups = 'drop')
+    
+    # Create the plot for each parameter combination
+    plot <- ggplot(aggregated_data, aes(x = .data[[params[1]]], y = .data[[params[2]]], fill = mean_value)) +  
+      geom_tile(width = 1, height = 1) +  
+      scale_fill_gradient(low = "blue", high = "red") +  
+      labs(title = paste(params[1], "and", params[2]), 
+           x = params[1], y = params[2], fill = paste("Mean", metric)) + 
+      theme_minimal() + 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1),
+            legend.key.size = unit(0.2, "cm"),  # Adjust the size of legend keys
+            legend.text = element_text(size = 4),  # Adjust the text size in the legend
+            legend.title = element_text(size = 5))  # Adjust the title size in the legend
+    
+    # Add the plot to the metric's plot list
+    metric_plots[[paste(params[1], params[2], sep = "_vs_")]] <- plot
+  }
+  
+  # Create the title for the current metric
+  title <- textGrob(paste(metric), gp = gpar(fontsize = 16, fontface = "bold"))
+  
+  # Arrange the 6 subplots for the current metric in a 2x3 layout
+  plots_list[[metric]] <- grid.arrange(grobs = metric_plots, ncol = 3, top = title)
+}
+
+grid.arrange(grobs = plots_list, ncol = 2, nrow = 2)
+
+
+### Correlation 
+
+cor_matrix <- results %>% 
+  select(-c("Name", "X", "Scenario", "Simulation_nr")) %>% 
+  cor(use = "pairwise.complete.obs")
+
+p_matrix <- cor.mtest(results %>% 
+                        select(-c("Name", "X", "Scenario", "Simulation_nr")) )$p  # Get p-values
+
+# Plot with significance level
+ggcorrplot(cor_matrix, 
+           method = "square", 
+           type = "lower", 
+           p.mat = p_matrix,  # Add p-values
+           sig.level = 0.05,  # Mark correlations with p < 0.05
+           insig = "blank",  # Hide non-significant values
+           lab = TRUE, 
+           tl.cex = 10, 
+           colors = c("red", "white", "blue"))
+t
+
+
