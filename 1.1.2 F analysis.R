@@ -14,21 +14,38 @@ generate_parameter_grid_PN <- function(P_range, N_range, P_step, N_step, a, b) {
   grid <- expand.grid(P_t_in = P_values, N_t_in = N_values)
   
   # Calculate f for each scenario
-  grid$f_scenario_1 <- with(grid, 
-                            a + 0.5 * b * ((exp(4 * P_t_in) - 1) / (exp(4 * P_t_in) + 1) - 
+  ### Changing kappa
+  grid$kappa_0.5 <- with(grid, 
+                            a + 0.5 * b * ((exp(0.5 * P_t_in) - 1) / (exp(0.5 * P_t_in) + 1) - 
                                              (exp(4 * N_t_in) - 1) / (exp(4 * N_t_in) + 1)))
   
-  grid$f_scenario_2 <- with(grid, 
-                            a + 0.5 * b * ((exp(8 * P_t_in) - 1) / (exp(8 * P_t_in) + 1) - 
+  grid$kappa_2 <- with(grid, 
+                            a + 0.5 * b * ((exp(2 * P_t_in) - 1) / (exp(2 * P_t_in) + 1) - 
                                              (exp(4 * N_t_in) - 1) / (exp(4 * N_t_in) + 1)))
   
-  grid$f_scenario_3 <- with(grid, 
-                            a + 0.5 * b * ((exp(4 * P_t_in) - 1) / (exp(4 * P_t_in) + 1) - 
-                                             (exp(8 * N_t_in) - 1) / (exp(8 * N_t_in) + 1)))
-  
-  grid$f_scenario_4 <- with(grid, 
-                            a + 0.5 * b * ((exp(16 * P_t_in) - 1) / (exp(16 * P_t_in) + 1) - 
+  grid$kappa_10 <- with(grid, 
+                            a + 0.5 * b * ((exp(10 * P_t_in) - 1) / (exp(10 * P_t_in) + 1) - 
                                              (exp(4 * N_t_in) - 1) / (exp(4 * N_t_in) + 1)))
+  
+  grid$kappa_20 <- with(grid, 
+                            a + 0.5 * b * ((exp(20 * P_t_in) - 1) / (exp(20 * P_t_in) + 1) - 
+                                             (exp(4 * N_t_in) - 1) / (exp(4 * N_t_in) + 1)))
+  ### Changing gamma
+  grid$gamma_0.5 <- with(grid, 
+                         a + 0.5 * b * ((exp(4 * P_t_in) - 1) / (exp(4 * P_t_in) + 1) - 
+                                          (exp(0.5 * N_t_in) - 1) / (exp(0.5 * N_t_in) + 1)))
+  
+  grid$gamma_2 <- with(grid, 
+                       a + 0.5 * b * ((exp(4 * P_t_in) - 1) / (exp(4 * P_t_in) + 1) - 
+                                        (exp(2 * N_t_in) - 1) / (exp(2 * N_t_in) + 1)))
+  
+  grid$gamma_10 <- with(grid, 
+                        a + 0.5 * b * ((exp(4 * P_t_in) - 1) / (exp(4 * P_t_in) + 1) - 
+                                         (exp(10 * N_t_in) - 1) / (exp(10 * N_t_in) + 1)))
+  
+  grid$gamma_20 <- with(grid, 
+                        a + 0.5 * b * ((exp(4 * P_t_in) - 1) / (exp(4 * P_t_in) + 1) - 
+                                         (exp(20 * N_t_in) - 1) / (exp(20 * N_t_in) + 1)))
   
   return(grid)
 }
@@ -37,11 +54,11 @@ parameter_grid_PN <- generate_parameter_grid_PN(P_range = c(0, 1),
                                           P_step = 0.1,
                                           N_range = c(-1, 0), 
                                           N_step = 0.1,
-                                          a = 0.8, b = 0.8)
+                                          a = 0.7, b = 0.7)
 
 PN_dt <- parameter_grid_PN %>% 
-  mutate(Positive_higher = f_scenario_2 - f_scenario_1,
-         Positive_lower = f_scenario_3 - f_scenario_1) %>% 
+  # mutate(Positive_higher = f_scenario_2 - f_scenario_1,
+  #        Positive_lower = f_scenario_3 - f_scenario_1) %>% 
   rename(P = P_t_in,
          N = N_t_in) %>% 
   filter(P > 0 & N <0)
@@ -213,8 +230,8 @@ f_diff_PN_lines <- ggplot() +
   annotate("text", x = max(PN_dt$P_t_in), y = 0.05, label = "Baseline (kappa = gamma)", color = "black", hjust = 1)
 
 
-
 ### Comparing 3 scenarios f values ######
+library(reshape2)
 
 PN_long <- melt(PN_dt, id.vars = c("P", "N"), 
                 measure.vars = c("f_scenario_1", "f_scenario_2", "f_scenario_3"),
@@ -274,7 +291,8 @@ N_t_in <- -0.1
 
 a + 0.5 * b * ((exp(kappa * P_t_in) - 1) / (exp(kappa * P_t_in) + 1) - (exp(gamma * N_t_in) - 1) / (exp(gamma * N_t_in) + 1))
 
-head(PN_dt)
+
+########## MAIN F ANALYSIS ##########
 ### all else equal P observation
 PN_dt %>% 
   filter(N == "-0.1") %>% 
@@ -284,3 +302,73 @@ PN_dt %>%
   geom_line(aes(x=P, y=f_scenario_2), color = "red")+
   geom_line(aes(x=P, y=f_scenario_3), color = "blue")+
 geom_line(aes(x=P, y=f_scenario_4), color = "brown")
+
+
+
+PN_dt %>%
+  filter(N == "-0.1") %>%
+  pivot_longer(cols = starts_with("kappa"), names_to = "Scenario", values_to = "Value") %>%
+  ggplot(aes(x = P, y = Value, color = Scenario)) +
+  geom_line() +
+  labs(title = "Comparison of Scenarios",
+       x = "P value",
+       y = "function value",
+       color = "Scenario") +  # Legend title
+  scale_color_manual(values = c("#d0e1f9", "#4a90e2", "#00509e", "#002147"),
+                     labels = c("f_scenario_1" = "kappa=0.5",
+                                "f_scenario_2" = "kappa=2",
+                                "f_scenario_3" = "kappa=10",
+                                "f_scenario_4" = "kappa=20")  # Custom legend labels
+  )+  # Light to dark blue
+  theme_minimal()
+
+PN_dt %>%
+  filter(P == "0.1") %>%
+  pivot_longer(cols = starts_with("kappa"), names_to = "Scenario", values_to = "Value") %>%
+  ggplot(aes(x = N, y = Value, color = Scenario)) +
+  geom_line() +
+  labs(title = "Comparison of Scenarios",
+       x = "N value",
+       y = "function value",
+       color = "Scenario") +  # Legend title
+  scale_color_manual(values = c("#d0e1f9", "#4a90e2", "#00509e", "#002147"),
+                     labels = c("f_scenario_1" = "kappa=0.5",
+                                "f_scenario_2" = "kappa=2",
+                                "f_scenario_3" = "kappa=10",
+                                "f_scenario_4" = "kappa=20")  # Custom legend labels
+  )+  # Light to dark blue
+  theme_minimal()
+
+PN_dt %>%
+  filter(N == "-0.1") %>%
+  pivot_longer(cols = starts_with("gamma"), names_to = "Scenario", values_to = "Value") %>%
+  ggplot(aes(x = P, y = Value, color = Scenario)) +
+  geom_line() +
+  labs(title = "Comparison of Scenarios",
+       x = "P value",
+       y = "function value",
+       color = "Scenario") +  # Legend title
+  scale_color_manual(values = c("#d0e1f9", "#4a90e2", "#00509e", "#002147"),
+                     labels = c("f_scenario_1" = "kappa=0.5",
+                                "f_scenario_2" = "kappa=2",
+                                "f_scenario_3" = "kappa=10",
+                                "f_scenario_4" = "kappa=20")  # Custom legend labels
+  )+  # Light to dark blue
+  theme_minimal()
+
+PN_dt %>%
+  filter(P == "0.1") %>%
+  pivot_longer(cols = starts_with("gamma"), names_to = "Scenario", values_to = "Value") %>%
+  ggplot(aes(x = N, y = Value, color = Scenario)) +
+  geom_line() +
+  labs(title = "Comparison of Scenarios",
+       x = "N value",
+       y = "function value",
+       color = "Scenario") +  # Legend title
+  scale_color_manual(values = c("#d0e1f9", "#4a90e2", "#00509e", "#002147"),
+                     labels = c("f_scenario_1" = "kappa=0.5",
+                                "f_scenario_2" = "kappa=2",
+                                "f_scenario_3" = "kappa=10",
+                                "f_scenario_4" = "kappa=20")  # Custom legend labels
+  )+  # Light to dark blue
+  theme_minimal()
