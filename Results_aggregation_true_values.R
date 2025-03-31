@@ -36,7 +36,6 @@ true_data_frame_Aux2 <- true_data_frame_Aux1 %>%
             min_AIC = min(AIC_mean),
             min_BIC = min(BIC_mean))
 
-# Difference to first row
-
+# Difference to first row (first has to be baseline)
 true_values_errors < - true_data_frame_Aux2 %>%
   mutate(across(where(is.numeric), ~ . - first(.)))
