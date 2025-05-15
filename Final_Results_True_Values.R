@@ -293,7 +293,7 @@ vline_data <- data.frame(
 )
 
 # Plot
-ggplot(gamma_RMSE_min_table %>% 
+Gamma_true_par_graph <- ggplot(gamma_RMSE_min_table %>% 
          filter(Name %in% names(gamma_values)), 
        aes(x = gamma, y = RMSE_min)) +
   geom_line(color = "steelblue") +
@@ -328,7 +328,7 @@ vline_data_kappa <- data.frame(
 )
 
 # Plot
-ggplot(kappa_RMSE_min_table %>% 
+Kappa_true_par_graph <- ggplot(kappa_RMSE_min_table %>% 
          filter(Name %in% names(kappa_values)), 
        aes(x = kappa, y = RMSE_min)) +
   geom_line(color = "steelblue") +
@@ -351,10 +351,12 @@ Final_true_parameters_table
 # Parameters and combinations table for each Name (RMSE RV)
 Final_par_table_RMSE_RV
 
-# parameter and it's combination RMSE RV values for Baseline (granular data)
+# parameter and it's combination RMSE RV valuexs for Baseline (granular data)
 summary_a_RMSE_RV[[1]] %>% View()
 summary_b_RMSE_RV[[1]]
 summary_kappa_RMSE_RV[[1]]
 summary_gamma_RMSE_RV[[1]]
 
 ### Graphs
+Gamma_true_par_graph
+Kappa_true_par_graph
