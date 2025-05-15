@@ -7,7 +7,7 @@ results_true
 get_min_metric_by_name <- function(name_val, df, metric) {
   df_name <- df %>% filter(Name == name_val)
   
-  metric_sym <- ensym(metric)
+  metric_sym <- rlang::ensym(metric)
   
   # Group and summarize by all parameter combinations
   summarize_by_params <- function(df, group_param, combo_format) {
@@ -31,12 +31,13 @@ get_min_metric_by_name <- function(name_val, df, metric) {
   summary_kappa <- summarize_by_params(df_name, kappa, combo_kappa)
   summary_gamma <- summarize_by_params(df_name, gamma, combo_gamma)
   
-  # Add Min and Final_par columns
+  # Add Min, Final_par, and Row_SD columns
   add_min_cols <- function(df, group_var, suffix) {
     df %>%
       mutate(
         !!paste0("Min_", suffix) := apply(across(-{{ group_var }}), 1, min, na.rm = TRUE),
-        Final_par = apply(across(-{{ group_var }}), 1, function(x) names(x)[which.min(x)])
+        Final_par = apply(across(-{{ group_var }}), 1, function(x) names(x)[which.min(x)]),
+        Row_SD = apply(across(-{{ group_var }}), 1, sd, na.rm = TRUE)
       )
   }
   
@@ -64,6 +65,7 @@ get_min_metric_by_name <- function(name_val, df, metric) {
   )
 }
 
+
 #### Run primary tables #########
 ####### RMSE_RV #########
 results_list_RMSE_RV <- lapply(
@@ -77,8 +79,20 @@ min_df_RMSE_RV <- do.call(rbind, lapply(results_list_RMSE_RV, function(x) x$min_
 rownames(min_df_RMSE_RV) <- unique(results_true$Name)
 
 min_final_RMSE_RV <- as.data.frame(min_df_RMSE_RV) %>%
-  mutate(final = pmin(a, b, kappa, gamma, na.rm = TRUE),
-         Final_par = sapply(results_list_RMSE_RV, function(x) x$min_vector["Final_par"]))
+  mutate(
+    final = pmin(a, b, kappa, gamma, na.rm = TRUE),
+    Final_par = sapply(results_list_RMSE_RV, function(x) x$min_vector["Final_par"]),
+    Row_SD = mapply(function(x) {
+      final_par <- x$min_vector["Final_par"]
+      summary_df <- switch(final_par,
+                           "a" = x$summary_a,
+                           "b" = x$summary_b,
+                           "kappa" = x$summary_kappa,
+                           "gamma" = x$summary_gamma)
+      row_index <- which.min(summary_df[[paste0("Min_", final_par)]])
+      summary_df$Row_SD[row_index]
+    }, results_list_RMSE_RV)
+  )
 
 
 summary_a_RMSE_RV <- lapply(results_list_RMSE_RV, function(x) x$summary_a)
@@ -106,8 +120,21 @@ min_df_RMSE_HV <- do.call(rbind, lapply(results_list_RMSE_HV, function(x) x$min_
 rownames(min_df_RMSE_HV) <- unique(results_true$Name)
 
 min_final_RMSE_HV <- as.data.frame(min_df_RMSE_HV) %>%
-  mutate(final = pmin(a, b, kappa, gamma, na.rm = TRUE),
-         Final_par = sapply(results_list_RMSE_HV, function(x) x$min_vector["Final_par"]))
+  mutate(
+    final = pmin(a, b, kappa, gamma, na.rm = TRUE),
+    Final_par = sapply(results_list_RMSE_HV, function(x) x$min_vector["Final_par"]),
+    Row_SD = mapply(function(x) {
+      final_par <- x$min_vector["Final_par"]
+      summary_df <- switch(final_par,
+                           "a" = x$summary_a,
+                           "b" = x$summary_b,
+                           "kappa" = x$summary_kappa,
+                           "gamma" = x$summary_gamma)
+      row_index <- which.min(summary_df[[paste0("Min_", final_par)]])
+      summary_df$Row_SD[row_index]
+    }, results_list_RMSE_HV)
+  )
+
 
 
 summary_a_RMSE_HV <- lapply(results_list_RMSE_HV, function(x) x$summary_a)
@@ -133,8 +160,20 @@ min_df_AIC <- do.call(rbind, lapply(results_list_AIC, function(x) x$min_vector[1
 rownames(min_df_AIC) <- unique(results_true$Name)
 
 min_final_AIC <- as.data.frame(min_df_AIC) %>%
-  mutate(final = pmin(a, b, kappa, gamma, na.rm = TRUE),
-         Final_par = sapply(results_list_AIC, function(x) x$min_vector["Final_par"]))
+  mutate(
+    final = pmin(a, b, kappa, gamma, na.rm = TRUE),
+    Final_par = sapply(results_list_AIC, function(x) x$min_vector["Final_par"]),
+    Row_SD = mapply(function(x) {
+      final_par <- x$min_vector["Final_par"]
+      summary_df <- switch(final_par,
+                           "a" = x$summary_a,
+                           "b" = x$summary_b,
+                           "kappa" = x$summary_kappa,
+                           "gamma" = x$summary_gamma)
+      row_index <- which.min(summary_df[[paste0("Min_", final_par)]])
+      summary_df$Row_SD[row_index]
+    }, results_list_AIC)
+  )
 
 
 summary_a_AIC <- lapply(results_list_AIC, function(x) x$summary_a)
@@ -159,14 +198,17 @@ View(summary_a_RMSE_HV[[1]]) # 1 means baseline
 
 # Final table
 Final_true_parameters_table <- min_final_RMSE_RV %>% 
-  select(final) %>% 
-rename(RMSE_RV = final) %>% 
+  select(final, Row_SD) %>% 
+rename(RMSE_RV = final,
+       St_Dev_RMSE_RV = Row_SD) %>% 
   bind_cols(min_final_RMSE_HV %>% 
-              select(final) %>% 
-              rename(RMSE_HV = final)) %>% 
+              select(final, Row_SD) %>% 
+              rename(RMSE_HV = final,
+                     St_Dev_RMSE_HV = Row_SD)) %>% 
   bind_cols(min_final_AIC%>% 
-              select(final) %>% 
-              rename(AIC = final)) 
+              select(final, Row_SD) %>% 
+              rename(AIC = final,
+                     St_Dev_AIC = Row_SD)) 
 
 
 ##### a analysis ########
@@ -268,6 +310,7 @@ ggplot(a_RMSE_min_table, aes(x = a, y = RMSE_min)) +
        x = "a",
        y = "Minimum RMSE")
 
+
 # Gamma
 gamma_RMSE_min_table <- do.call(rbind, lapply(seq_along(summary_gamma_RMSE_RV), function(i) {
   df <- summary_gamma_RMSE_RV[[i]]
@@ -305,6 +348,53 @@ Gamma_true_par_graph <- ggplot(gamma_RMSE_min_table %>%
   labs(title = "RMSE_min vs. gamma for each Name",
        x = "gamma",
        y = "Minimum RMSE")
+
+
+# Gamma with st.dev
+
+gamma_RMSE_min_table_stdev <- do.call(rbind, lapply(seq_along(summary_gamma_RMSE_RV), function(i) {
+  df <- summary_gamma_RMSE_RV[[i]]
+  name <- unique(results_true$Name)[i]
+  
+  df %>%
+    group_by(gamma) %>%
+    slice_min(order_by = Min_gamma, n = 1, with_ties = FALSE) %>%
+    mutate(
+      Name = name,
+      RMSE_min = Min_gamma,
+      lower = Min_gamma - Row_SD,
+      upper = Min_gamma + Row_SD
+    ) %>%
+    select(Name, gamma, RMSE_min, Row_SD, lower, upper)
+}))
+
+# Define actual gamma values
+gamma_values <- c("Baseline" = 4, "Gamma=0.5" = 0.5, "Gamma=2" = 2, "Gamma=10" = 10, "Gamma=20" = 20)
+vline_data <- data.frame(
+  Name = names(gamma_values),
+  gamma_vline = unname(gamma_values)
+)
+
+# Plot RMSE_min ± SD vs. gamma
+Gamma_true_par_graph_stdev <- ggplot(
+  gamma_RMSE_min_table_stdev %>% filter(Name %in% names(gamma_values)),
+  aes(x = gamma, y = RMSE_min)
+) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), fill = "gray80", alpha = 0.5) +
+  geom_line(color = "steelblue") +
+  geom_point(color = "darkred") +
+  geom_vline(
+    data = vline_data,
+    aes(xintercept = gamma_vline),
+    color = "black", linetype = "dashed"
+  ) +
+  facet_wrap(~ Name, scales = "free_y") +
+  theme_minimal() +
+  labs(
+    title = "RMSE_min ± SD vs. gamma for each Name",
+    x = "gamma",
+    y = "Minimum RMSE"
+  )
 
 
 # Kappa
@@ -360,3 +450,5 @@ summary_gamma_RMSE_RV[[1]]
 ### Graphs
 Gamma_true_par_graph
 Kappa_true_par_graph
+
+Gamma_true_par_graph_stdev #liudnesnis
